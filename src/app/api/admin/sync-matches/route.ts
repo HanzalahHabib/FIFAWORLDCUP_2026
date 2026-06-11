@@ -3,6 +3,8 @@ import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     // 1. Authenticate & Verify Admin Role
