@@ -4,7 +4,7 @@ import { Calendar } from 'lucide-react';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 
-export const revalidate = 60; // SSR with 60s revalidation
+export const dynamic = 'force-dynamic';
 
 export default async function MatchesPage() {
   const cookieStore = await cookies();
