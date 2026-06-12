@@ -16,7 +16,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const matches = await prisma.match.findMany({
+    const customMatches = await prisma.match.findMany({
       where: { apiFootballId: null },
       include: {
         homeTeam: true,
@@ -25,7 +25,16 @@ export async function GET() {
       orderBy: { kickoffTimeUTC: 'asc' },
     });
 
-    return NextResponse.json(matches);
+    const automaticMatches = await prisma.match.findMany({
+      where: { apiFootballId: { not: null } },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+      },
+      orderBy: { kickoffTimeUTC: 'asc' },
+    });
+
+    return NextResponse.json({ customMatches, automaticMatches });
   } catch (error) {
     console.error('Fetch Custom Matches Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

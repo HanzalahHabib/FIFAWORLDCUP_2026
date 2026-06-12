@@ -29,6 +29,7 @@ model User {
   noWinTeamId    String?
 
   picks          Pick[]
+  pollVotes      PollVote[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -41,6 +42,9 @@ model Team {
   
   homeMatches Match[]  @relation("HomeMatches")
   awayMatches Match[]  @relation("AwayMatches")
+
+  pollVotes   PollVote[]
+  pollsWon    Poll[]   @relation("PollResult")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -86,4 +90,33 @@ model Settings {
   actualUnbeatenTeamId String?
   actualNoWinTeamId    String?
   updatedAt            DateTime  @updatedAt
+}
+
+model Poll {
+  id           String     @id @default(uuid())
+  question     String
+  isActive     Boolean    @default(false)
+  resultTeamId String?
+  
+  votes        PollVote[]
+  resultTeam   Team?      @relation("PollResult", fields: [resultTeamId], references: [id])
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model PollVote {
+  id        String   @id @default(uuid())
+  pollId    String
+  userId    String
+  teamId    String
+  
+  poll      Poll     @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([pollId, userId])
 }
