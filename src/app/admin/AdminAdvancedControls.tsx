@@ -14,6 +14,7 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
 
   // Match State
   const [matchData, setMatchData] = useState({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '' });
+  const [customMatches, setCustomMatches] = useState<any[]>([]);
 
   const fetchSettings = async () => {
     const res = await fetch('/api/admin/settings');
@@ -25,9 +26,21 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
     setUsers(await res.json());
   };
 
+  const fetchCustomMatches = async () => {
+    try {
+      const res = await fetch('/api/admin/custom-match');
+      if (res.ok) {
+        setCustomMatches(await res.json());
+      }
+    } catch (err) {
+      console.error('Error fetching custom matches:', err);
+    }
+  };
+
   useEffect(() => {
     fetchSettings();
     fetchUsers();
+    fetchCustomMatches();
   }, []);
 
   const handleSaveSettings = async () => {
@@ -50,13 +63,37 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch('/api/admin/custom-match', {
+    const res = await fetch('/api/admin/custom-match', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(matchData)
     });
-    alert('Match Created!');
-    setMatchData({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '' });
+    if (res.ok) {
+      alert('Match Created!');
+      setMatchData({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '' });
+      fetchCustomMatches();
+    } else {
+      const data = await res.json();
+      alert(data.error || 'Failed to create match');
+    }
+  };
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!confirm('Are you sure you want to delete this custom match? All associated predictions will be lost.')) return;
+    try {
+      const res = await fetch(`/api/admin/custom-match?id=${matchId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('Match deleted successfully');
+        fetchCustomMatches();
+      } else {
+        alert(data.error || 'Failed to delete match');
+      }
+    } catch (err) {
+      alert('Error deleting match');
+    }
   };
 
   const handleResolvePoll = async (type: string) => {
@@ -144,6 +181,37 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
             </div>
             <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded font-medium">Create Match</button>
           </form>
+
+          <div className="border-t border-white/10 pt-6 mt-6 space-y-4">
+            <h4 className="text-lg font-bold text-slate-300">Active Custom Matches</h4>
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+              {customMatches.map((m) => (
+                <div key={m.id} className="flex items-center justify-between bg-slate-900/50 p-4 rounded-xl border border-white/5">
+                  <div className="space-y-1">
+                    <div className="font-bold text-white flex items-center gap-2">
+                      <span>{m.homeTeam?.name || 'TBD'}</span>
+                      <span className="text-xs text-slate-500 font-mono">vs</span>
+                      <span>{m.awayTeam?.name || 'TBD'}</span>
+                    </div>
+                    <div className="text-xs text-slate-400 font-mono">
+                      Kickoff: {new Date(m.kickoffTimeUTC).toLocaleString()}
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => handleDeleteMatch(m.id)}
+                    className="bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 px-3 py-1.5 rounded-lg font-bold border border-rose-500/50 text-xs transition-colors"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {customMatches.length === 0 && (
+                <div className="text-center py-6 text-slate-500 text-sm">
+                  No custom matches active.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

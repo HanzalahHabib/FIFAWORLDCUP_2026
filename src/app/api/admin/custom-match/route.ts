@@ -5,6 +5,33 @@ import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const payload = await verifyToken(token);
+    if (!payload || payload.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const matches = await prisma.match.findMany({
+      where: { apiFootballId: null },
+      include: {
+        homeTeam: true,
+        awayTeam: true,
+      },
+      orderBy: { kickoffTimeUTC: 'asc' },
+    });
+
+    return NextResponse.json(matches);
+  } catch (error) {
+    console.error('Fetch Custom Matches Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = await cookies();

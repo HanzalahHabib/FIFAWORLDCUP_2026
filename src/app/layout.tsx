@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
 import NavbarAuth from '@/components/NavbarAuth';
+import BonusPicksModal from '@/components/BonusPicksModal';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 
@@ -59,6 +60,7 @@ export default async function RootLayout({
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children}
         </main>
+        {isLoggedIn && <BonusPicksModal />}
       </body>
     </html>
   );
