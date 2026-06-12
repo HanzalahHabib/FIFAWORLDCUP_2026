@@ -13,14 +13,17 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
 
   useEffect(() => {
-    // In a real app we would fetch this from /api/analytics
-    // For demonstration, we'll mock the response after 1s
-    setTimeout(() => {
-      setData({
-        usTeam: { totalUsers: 145, averagePoints: 12.5, accuracyPercent: 68.4 },
-        pkTeam: { totalUsers: 182, averagePoints: 14.1, accuracyPercent: 72.1 }
-      });
-    }, 1000);
+    async function fetchAnalytics() {
+      try {
+        const res = await fetch('/api/analytics');
+        if (!res.ok) throw new Error('Failed to fetch');
+        const json = await res.json();
+        setData(json.analytics);
+      } catch (err) {
+        console.error('Error fetching analytics:', err);
+      }
+    }
+    fetchAnalytics();
   }, []);
 
   if (!data) {

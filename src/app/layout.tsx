@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
+import NavbarAuth from '@/components/NavbarAuth';
+import { cookies } from 'next/headers';
+import { verifyToken } from '@/lib/auth';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -10,11 +13,24 @@ export const metadata: Metadata = {
   description: 'Predict match outcomes and compete in the ultimate FIFA World Cup 2026 prediction pool.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth_token')?.value;
+  let isLoggedIn = false;
+  let userRole = 'USER';
+  
+  if (token) {
+    const payload = await verifyToken(token);
+    if (payload) {
+      isLoggedIn = true;
+      userRole = payload.role as string;
+    }
+  }
+
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} min-h-screen bg-[#0a0a0f] text-slate-200 selection:bg-primary/30`}>
@@ -35,12 +51,7 @@ export default function RootLayout({
                   <Link href="/analytics" className="text-sm text-slate-300 hover:text-white transition-colors">US vs PK</Link>
                 </div>
               </div>
-              <div className="flex items-center space-x-4">
-                <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-white transition-colors">Log In</Link>
-                <Link href="/register" className="text-sm font-medium px-4 py-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-[0_0_15px_rgba(79,70,229,0.3)]">
-                  Sign Up
-                </Link>
-              </div>
+              <NavbarAuth isLoggedIn={isLoggedIn} userRole={userRole} />
             </div>
           </div>
         </nav>

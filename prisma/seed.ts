@@ -18,49 +18,74 @@ const teams = [
 ];
 
 async function main() {
-  console.log('Start seeding...');
+  console.log('Start seeding... Clearing previous match data...');
   
+  // Clear old matches if any (to prevent duplicates)
+  await prisma.pick.deleteMany({});
+  await prisma.match.deleteMany({});
+
+  const groupMap: Record<string, { id: string, name: string }[]> = {};
+
   for (const t of teams) {
     const team = await prisma.team.upsert({
       where: { name: t.name },
-      update: {},
-      create: {
-        name: t.name,
-        group: t.group,
-      },
+      update: { group: t.group },
+      create: { name: t.name, group: t.group },
     });
-    console.log(`Created team with id: ${team.id}`);
+    
+    if (!groupMap[t.group]) groupMap[t.group] = [];
+    groupMap[t.group].push({ id: team.id, name: team.name });
   }
 
-  // Optionally create some mock matches
-  const usa = await prisma.team.findUnique({ where: { name: 'USA' } });
-  const mexico = await prisma.team.findUnique({ where: { name: 'Mexico' } });
+  console.log('Teams generated. Creating 72 Group Stage matches...');
 
-  if (usa && mexico) {
-    // A match in the past
+  const startDate = new Date('2026-06-11T12:00:00Z');
+  let matchIdCounter = 1;
+
+  // Generate Group Stage Matches (72 matches)
+  for (const group of Object.keys(groupMap).sort()) {
+    const groupTeams = groupMap[group];
+    // Simple Round Robin (4 teams = 6 matches)
+    const matchups = [
+      [0, 1], [2, 3],
+      [0, 2], [1, 3],
+      [0, 3], [1, 2]
+    ];
+
+    let matchDayOffset = 0;
+    for (const [homeIdx, awayIdx] of matchups) {
+      const matchDate = new Date(startDate.getTime() + (matchDayOffset * 24 * 60 * 60 * 1000));
+      
+      await prisma.match.create({
+        data: {
+          apiFootballId: 2026000 + matchIdCounter,
+          homeTeamId: groupTeams[homeIdx].id,
+          awayTeamId: groupTeams[awayIdx].id,
+          kickoffTimeUTC: matchDate,
+          status: 'SCHEDULED',
+        }
+      });
+      matchIdCounter++;
+      matchDayOffset += 2; // Spread matches out
+    }
+  }
+
+  console.log('Creating 32 Knockout Stage placeholders...');
+  // 32 Knockout matches = 16 (R32) + 8 (R16) + 4 (QF) + 2 (SF) + 1 (3rd) + 1 (Final)
+  let knockoutDate = new Date('2026-06-28T12:00:00Z');
+  
+  for (let i = 0; i < 32; i++) {
     await prisma.match.create({
       data: {
-        homeTeamId: usa.id,
-        awayTeamId: mexico.id,
-        kickoffTimeUTC: new Date(Date.now() - 24 * 60 * 60 * 1000), // yesterday
-        status: 'FINISHED',
-        homeScore: 2,
-        awayScore: 1,
-      }
-    });
-
-    // A match in the future
-    await prisma.match.create({
-      data: {
-        homeTeamId: mexico.id,
-        awayTeamId: usa.id,
-        kickoffTimeUTC: new Date(Date.now() + 24 * 60 * 60 * 1000), // tomorrow
+        apiFootballId: 2026100 + i,
+        // homeTeamId and awayTeamId left null as TBD placeholders
+        kickoffTimeUTC: new Date(knockoutDate.getTime() + (i * 12 * 60 * 60 * 1000)),
         status: 'SCHEDULED',
       }
     });
   }
 
-  console.log('Seeding finished.');
+  console.log('Successfully seeded 104 World Cup matches.');
 }
 
 main()

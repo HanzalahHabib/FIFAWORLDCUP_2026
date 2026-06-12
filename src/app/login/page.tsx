@@ -41,7 +41,32 @@ export default function LoginPage() {
       >
         <h2 className="text-3xl font-bold text-center text-white mb-8">Access Arena</h2>
         
-        {error && <div className="bg-rose-500/10 border border-rose-500/20 text-rose-400 p-3 rounded mb-4 text-sm text-center">{error}</div>}
+        {/* Error Popup Modal */}
+        {error && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-slate-900 border border-rose-500/50 p-6 rounded-xl max-w-sm w-full text-center space-y-6 shadow-2xl shadow-rose-900/20"
+            >
+              <div className="w-16 h-16 bg-rose-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <svg className="w-8 h-8 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl text-white font-bold mb-2">Authentication Failed</h3>
+                <p className="text-slate-300 text-sm">{error}</p>
+              </div>
+              <button 
+                onClick={() => setError('')} 
+                className="w-full bg-rose-600 text-white font-medium px-4 py-3 rounded-lg hover:bg-rose-500 transition-colors"
+              >
+                Dismiss
+              </button>
+            </motion.div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
