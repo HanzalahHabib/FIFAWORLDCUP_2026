@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyAuth } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 // Get active polls the user hasn't voted on yet
 export async function GET(request: Request) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success || !authResult.payload) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authResult.payload.userId as string;
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = payload.userId as string;
 
     // Fetch active polls that this user has not voted on
     const activePolls = await prisma.poll.findMany({
@@ -39,12 +46,18 @@ export async function GET(request: Request) {
 // Vote on a poll
 export async function POST(request: Request) {
   try {
-    const authResult = await verifyAuth(request);
-    if (!authResult.success || !authResult.payload) {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = authResult.payload.userId as string;
+    const payload = await verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userId = payload.userId as string;
     const body = await request.json();
     const { pollId, teamId } = body;
 

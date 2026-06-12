@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { verifyAuth } from '@/lib/auth';
+import { verifyToken } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
 // Helper to check admin access
-async function checkAdmin(request: Request) {
-  const authResult = await verifyAuth(request);
-  if (!authResult.success || !authResult.payload || authResult.payload.role !== 'ADMIN') {
+async function checkAdmin() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('auth_token')?.value;
+  if (!token) return false;
+
+  const payload = await verifyToken(token);
+  if (!payload || payload.role !== 'ADMIN') {
     return false;
   }
   return true;
@@ -13,7 +18,7 @@ async function checkAdmin(request: Request) {
 
 // Get all polls for admin dashboard
 export async function GET(request: Request) {
-  if (!(await checkAdmin(request))) {
+  if (!(await checkAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -37,7 +42,7 @@ export async function GET(request: Request) {
 
 // Create a new poll
 export async function POST(request: Request) {
-  if (!(await checkAdmin(request))) {
+  if (!(await checkAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -65,7 +70,7 @@ export async function POST(request: Request) {
 
 // Delete a poll
 export async function DELETE(request: Request) {
-  if (!(await checkAdmin(request))) {
+  if (!(await checkAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -90,7 +95,7 @@ export async function DELETE(request: Request) {
 
 // Toggle active status or Resolve poll
 export async function PUT(request: Request) {
-  if (!(await checkAdmin(request))) {
+  if (!(await checkAdmin())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
