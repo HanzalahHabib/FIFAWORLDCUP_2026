@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import AdminActions from './AdminActions';
+import AdminAdvancedControls from './AdminAdvancedControls';
 
 export const revalidate = 0; // Dynamic
 
@@ -21,6 +22,8 @@ export default async function AdminPage() {
   const picksCount = await prisma.pick.count();
   const matchesCount = await prisma.match.count();
   const finishedMatches = await prisma.match.count({ where: { status: 'FINISHED' } });
+  
+  const teams = await prisma.team.findMany({ orderBy: { name: 'asc' } });
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -52,6 +55,8 @@ export default async function AdminPage() {
         <h2 className="text-2xl font-bold text-white mb-6">System Operations</h2>
         <AdminActions />
       </div>
+
+      <AdminAdvancedControls teams={teams} />
     </div>
   );
 }

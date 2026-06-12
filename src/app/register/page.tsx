@@ -27,6 +27,7 @@ export default function RegisterPage() {
       
       if (!res.ok) throw new Error(data.error);
       router.push('/matches');
+      router.refresh();
     } catch (err: any) {
       setError(err.message);
     } finally {

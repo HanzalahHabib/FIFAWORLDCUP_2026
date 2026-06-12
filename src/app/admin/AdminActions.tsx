@@ -6,7 +6,22 @@ import { RefreshCw, Calculator } from 'lucide-react';
 export default function AdminActions() {
   const [syncing, setSyncing] = useState(false);
   const [calculating, setCalculating] = useState(false);
+  const [addingPoints, setAddingPoints] = useState(false);
   const [message, setMessage] = useState('');
+
+  const handleAddPoints = async () => {
+    setAddingPoints(true);
+    setMessage('');
+    try {
+      const res = await fetch('/api/admin/add-points', { method: 'POST' });
+      const data = await res.json();
+      setMessage(data.message || data.error);
+    } catch (err: any) {
+      setMessage('Error adding points');
+    } finally {
+      setAddingPoints(false);
+    }
+  };
 
   const handleSync = async () => {
     setSyncing(true);
@@ -55,6 +70,15 @@ export default function AdminActions() {
         >
           <Calculator className={`w-5 h-5 ${calculating ? 'animate-pulse' : ''}`} />
           {calculating ? 'Calculating...' : 'Recalculate Global Scores'}
+        </button>
+
+        <button 
+          onClick={handleAddPoints} 
+          disabled={addingPoints}
+          className="flex-1 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/50 text-emerald-300 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-colors"
+        >
+          <Calculator className={`w-5 h-5 ${addingPoints ? 'animate-pulse' : ''}`} />
+          {addingPoints ? 'Adding...' : 'Give 1 Point to All'}
         </button>
       </div>
 

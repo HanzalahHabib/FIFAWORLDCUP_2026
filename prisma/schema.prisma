@@ -77,3 +77,13 @@ model Pick {
 
   @@unique([userId, matchId])
 }
+
+model Settings {
+  id                   String    @id @default("global")
+  matchesShowDays      Int       @default(2)
+  championPickDeadline DateTime?
+  actualChampionId     String?
+  actualUnbeatenTeamId String?
+  actualNoWinTeamId    String?
+  updatedAt            DateTime  @updatedAt
+}

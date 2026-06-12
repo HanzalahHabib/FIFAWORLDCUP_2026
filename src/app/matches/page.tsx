@@ -16,7 +16,24 @@ export default async function MatchesPage() {
     if (payload) userId = payload.userId;
   }
 
+  let matchesShowDays = 2;
+  const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+  if (settings && settings.matchesShowDays) {
+    matchesShowDays = settings.matchesShowDays;
+  }
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const endOfWindow = new Date(startOfToday);
+  endOfWindow.setDate(startOfToday.getDate() + matchesShowDays);
+
   const matches = await prisma.match.findMany({
+    where: {
+      kickoffTimeUTC: {
+        gte: startOfToday,
+        lt: endOfWindow,
+      }
+    },
     include: {
       homeTeam: true,
       awayTeam: true,

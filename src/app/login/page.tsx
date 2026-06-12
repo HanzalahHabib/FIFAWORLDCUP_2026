@@ -25,6 +25,7 @@ export default function LoginPage() {
       
       if (!res.ok) throw new Error(data.error);
       router.push('/matches');
+      router.refresh();
     } catch (err: any) {
       setError(err.message);
     } finally {
