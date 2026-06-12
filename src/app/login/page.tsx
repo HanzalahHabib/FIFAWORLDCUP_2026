@@ -23,7 +23,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.details ? `${data.error}: ${data.details}` : data.error);
       router.push('/matches');
       router.refresh();
     } catch (err: any) {
