@@ -17,7 +17,29 @@ export async function GET() {
     }
 
     const users = await prisma.user.findMany({
-      select: { id: true, name: true, email: true, points: true, role: true },
+      select: { 
+        id: true, 
+        name: true, 
+        email: true, 
+        points: true, 
+        role: true,
+        firstPlaceId: true,
+        secondPlaceId: true,
+        thirdPlaceId: true,
+        fourthPlaceId: true,
+        unbeatenTeamId: true,
+        noWinTeamId: true,
+        picks: {
+          include: {
+            match: {
+              include: {
+                homeTeam: true,
+                awayTeam: true
+              }
+            }
+          }
+        }
+      },
       orderBy: { points: 'desc' }
     });
     

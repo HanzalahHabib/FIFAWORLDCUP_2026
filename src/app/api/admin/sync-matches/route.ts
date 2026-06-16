@@ -17,52 +17,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // 2. Fetch or Mock Match Data
-    const apiKey = process.env.API_SPORTS_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'API_SPORTS_KEY is not set in environment variables' }, { status: 500 });
-    }
-
-    const response = await fetch('https://v3.football.api-sports.io/fixtures?league=1&season=2026', {
-      headers: {
-        'x-rapidapi-host': 'v3.football.api-sports.io',
-        'x-rapidapi-key': apiKey
-      }
-    });
-
-    if (!response.ok) {
-      return NextResponse.json({ error: 'Failed to fetch matches from API' }, { status: 500 });
-    }
-
-    const data = await response.json();
-    let updatedCount = 0;
-
-    for (const fixture of data.response || []) {
-      const apiFootballId = parseInt(fixture.fixture.id, 10);
-      
-      if (fixture.fixture.status.short === 'FT') {
-        const homeScore = fixture.goals.home;
-        const awayScore = fixture.goals.away;
-        
-        try {
-          await prisma.match.updateMany({
-            where: { apiFootballId },
-            data: {
-              status: 'FINISHED',
-              homeScore,
-              awayScore
-            }
-          });
-          updatedCount++;
-        } catch (e) {
-          // match not found or update failed
-        }
-      }
-    }
-
+    // 2. Disable Automatic Sync
+    // Since 2026 World Cup data is not fully available/accurate on this API endpoint yet, 
+    // we disable automatic syncing. Administrators should use Custom Matches.
     return NextResponse.json({
-      message: 'Sync completed successfully from API-Sports',
-      updatedMatches: updatedCount
+      message: 'Automatic match syncing is currently disabled. Please use Custom Matches.',
+      updatedMatches: 0
     });
 
   } catch (error) {

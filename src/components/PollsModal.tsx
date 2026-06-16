@@ -11,9 +11,8 @@ export default function PollsModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Check if user is logged in
-    const token = document.cookie.includes('auth_token');
-    if (!token) return;
+    // Layout.tsx conditionally renders this component ONLY if the user is authenticated, 
+    // so we don't need to (and can't) check the HttpOnly cookie here.
 
     const fetchPolls = async () => {
       try {

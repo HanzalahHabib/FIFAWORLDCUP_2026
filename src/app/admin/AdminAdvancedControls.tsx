@@ -194,21 +194,51 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
            <h3 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5 text-emerald-400"/> Leaderboard Point Edit</h3>
            <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
              {users.map(u => (
-               <div key={u.id} className="flex items-center justify-between bg-slate-900/50 p-3 rounded border border-white/5">
-                 <div>
-                   <div className="font-bold text-white">{u.name}</div>
-                   <div className="text-xs text-slate-400">{u.email}</div>
+               <details key={u.id} className="bg-slate-900/50 rounded border border-white/5 group">
+                 <summary className="flex items-center justify-between p-3 cursor-pointer list-none">
+                   <div>
+                     <div className="font-bold text-white group-open:text-emerald-400 transition-colors">{u.name}</div>
+                     <div className="text-xs text-slate-400">{u.email}</div>
+                   </div>
+                   <div className="flex items-center gap-2">
+                     <input type="number" value={u.points} onClick={e => e.stopPropagation()} onChange={(e) => {
+                       const newUsers = [...users];
+                       const idx = newUsers.findIndex(x => x.id === u.id);
+                       newUsers[idx].points = parseInt(e.target.value);
+                       setUsers(newUsers);
+                     }} className="w-20 bg-black border border-white/10 rounded p-1 text-center text-white"/>
+                     <button onClick={(e) => { e.stopPropagation(); handleUpdatePoints(u.id, u.points); }} className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 px-3 py-1 rounded font-medium border border-emerald-500/50">Save</button>
+                   </div>
+                 </summary>
+                 <div className="p-3 pt-0 border-t border-white/5 space-y-4">
+                   {u.picks && u.picks.length > 0 && (
+                     <div>
+                       <h4 className="text-xs font-bold text-slate-300 uppercase mb-2">Match Picks</h4>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                         {u.picks.map((p: any) => (
+                           <div key={p.id} className="text-xs bg-black/50 p-2 rounded flex justify-between">
+                             <span className="text-slate-400">{p.match?.homeTeam?.name} vs {p.match?.awayTeam?.name}</span>
+                             <span className="font-bold text-emerald-400">{p.prediction === 'HOME' ? p.match?.homeTeam?.name : p.prediction === 'AWAY' ? p.match?.awayTeam?.name : 'DRAW'}</span>
+                           </div>
+                         ))}
+                       </div>
+                     </div>
+                   )}
+                   {(u.firstPlaceId || u.unbeatenTeamId || u.noWinTeamId) && (
+                     <div>
+                       <h4 className="text-xs font-bold text-slate-300 uppercase mb-2">Bonus Selections</h4>
+                       <div className="text-xs grid grid-cols-2 gap-2 bg-black/50 p-2 rounded text-slate-400">
+                         {u.firstPlaceId && <div>1st Place ID: <span className="text-white">{u.firstPlaceId}</span></div>}
+                         {u.secondPlaceId && <div>2nd Place ID: <span className="text-white">{u.secondPlaceId}</span></div>}
+                         {u.thirdPlaceId && <div>3rd Place ID: <span className="text-white">{u.thirdPlaceId}</span></div>}
+                         {u.fourthPlaceId && <div>4th Place ID: <span className="text-white">{u.fourthPlaceId}</span></div>}
+                         {u.unbeatenTeamId && <div>Unbeaten Team ID: <span className="text-white">{u.unbeatenTeamId}</span></div>}
+                         {u.noWinTeamId && <div>No Win Team ID: <span className="text-white">{u.noWinTeamId}</span></div>}
+                       </div>
+                     </div>
+                   )}
                  </div>
-                 <div className="flex items-center gap-2">
-                   <input type="number" value={u.points} onChange={(e) => {
-                     const newUsers = [...users];
-                     const idx = newUsers.findIndex(x => x.id === u.id);
-                     newUsers[idx].points = parseInt(e.target.value);
-                     setUsers(newUsers);
-                   }} className="w-20 bg-black border border-white/10 rounded p-1 text-center text-white"/>
-                   <button onClick={() => handleUpdatePoints(u.id, u.points)} className="bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/40 px-3 py-1 rounded font-medium border border-emerald-500/50">Save</button>
-                 </div>
-               </div>
+               </details>
              ))}
            </div>
         </div>

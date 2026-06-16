@@ -25,7 +25,7 @@ export default function MatchCard({ match, userPick, isLoggedIn }: MatchProps) {
       setError('Log in to make a pick');
       return;
     }
-    if (isLocked || pick) return; // Cannot modify pick
+    if (isLocked) return; // Cannot modify pick after locked
 
     setLoading(true);
     try {
@@ -55,7 +55,7 @@ export default function MatchCard({ match, userPick, isLoggedIn }: MatchProps) {
       <button
         key={type}
         onClick={() => handlePick(type)}
-        disabled={isLocked || !!pick || loading}
+        disabled={isLocked || loading}
         className={`flex-1 py-2 px-4 rounded-lg font-bold text-sm transition-all relative overflow-hidden
           ${isSelected ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}
           ${isLocked && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}
@@ -96,9 +96,9 @@ export default function MatchCard({ match, userPick, isLoggedIn }: MatchProps) {
       </div>
 
       <div className="flex gap-2 mt-4">
-        {renderPickButton("HOME", "Home")}
+        {renderPickButton("HOME", match.homeTeam?.name || "Home")}
         {renderPickButton("DRAW", "Draw")}
-        {renderPickButton("AWAY", "Away")}
+        {renderPickButton("AWAY", match.awayTeam?.name || "Away")}
       </div>
 
       {error && <p className="text-rose-400 text-xs text-center">{error}</p>}

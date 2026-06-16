@@ -41,23 +41,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Match has already kicked off. Picks are locked.' }, { status: 403 });
     }
 
-    // 4. Prevent Modification / Re-submission
-    const existingPick = await prisma.pick.findUnique({
+    // 4. Upsert Pick (Allow changes until kickoff)
+    const pick = await prisma.pick.upsert({
       where: {
         userId_matchId: {
           userId: payload.userId,
           matchId: match.id,
         }
-      }
-    });
-
-    if (existingPick) {
-      return NextResponse.json({ error: 'You have already submitted a pick for this match. Modifications are not allowed.' }, { status: 403 });
-    }
-
-    // 5. Save Pick
-    const pick = await prisma.pick.create({
-      data: {
+      },
+      update: {
+        prediction,
+      },
+      create: {
         userId: payload.userId,
         matchId: match.id,
         prediction,
