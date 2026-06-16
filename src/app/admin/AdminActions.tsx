@@ -60,7 +60,7 @@ export default function AdminActions() {
           className="flex-1 bg-rose-600/20 hover:bg-rose-600/40 border border-rose-500/50 text-rose-300 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-colors"
         >
           <RefreshCw className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Force Data Sync (Mock API)'}
+          {syncing ? 'Syncing...' : 'Sync 2026 World Cup Data'}
         </button>
 
         <button 
