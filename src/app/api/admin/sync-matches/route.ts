@@ -129,12 +129,30 @@ export async function POST(request: Request) {
       matchesCreated++;
     }
 
+    // 7. Remove stale automatic matches that are no longer in the fixtures
+    const validMatchNumbers = groupStageFixtures.map(f => f.matchNumber);
+    const staleMatches = await prisma.match.findMany({
+      where: {
+        apiFootballId: { not: null },
+        NOT: { apiFootballId: { in: validMatchNumbers } }
+      },
+      select: { id: true }
+    });
+    const staleIds = staleMatches.map(m => m.id);
+    let matchesRemoved = 0;
+    if (staleIds.length > 0) {
+      await prisma.pick.deleteMany({ where: { matchId: { in: staleIds } } });
+      const deleted = await prisma.match.deleteMany({ where: { id: { in: staleIds } } });
+      matchesRemoved = deleted.count;
+    }
+
     return NextResponse.json({
-      message: `Sync complete! Teams: ${teamsCreated} created, ${teamsUpdated} updated. Matches: ${matchesCreated} created, ${matchesSkipped} already existed.`,
+      message: `Sync complete! Teams: ${teamsCreated} created, ${teamsUpdated} updated. Matches: ${matchesCreated} created, ${matchesSkipped} already existed, ${matchesRemoved} stale removed.`,
       teamsCreated,
       teamsUpdated,
       matchesCreated,
       matchesSkipped,
+      matchesRemoved,
       totalTeams: teamMap.size,
       totalGroupStageFixtures: groupStageFixtures.length
     });

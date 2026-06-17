@@ -85,16 +85,34 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Support bulk delete via JSON body, or single delete via query param
     const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
+    const singleId = searchParams.get('id');
 
-    if (!id) return NextResponse.json({ error: 'Match ID required' }, { status: 400 });
+    let idsToDelete: string[] = [];
 
-    // Delete associated picks first
-    await prisma.pick.deleteMany({ where: { matchId: id } });
-    await prisma.match.delete({ where: { id } });
+    if (singleId) {
+      idsToDelete = [singleId];
+    } else {
+      try {
+        const body = await request.json();
+        if (body.ids && Array.isArray(body.ids) && body.ids.length > 0) {
+          idsToDelete = body.ids;
+        }
+      } catch {
+        // No body provided
+      }
+    }
 
-    return NextResponse.json({ message: 'Match deleted successfully' });
+    if (idsToDelete.length === 0) {
+      return NextResponse.json({ error: 'Match ID(s) required' }, { status: 400 });
+    }
+
+    // Delete associated picks first, then matches
+    await prisma.pick.deleteMany({ where: { matchId: { in: idsToDelete } } });
+    await prisma.match.deleteMany({ where: { id: { in: idsToDelete } } });
+
+    return NextResponse.json({ message: `${idsToDelete.length} match(es) deleted successfully`, deleted: idsToDelete.length });
   } catch (error) {
     console.error('Delete Match Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

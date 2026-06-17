@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users, Plus, Trophy, Award, Target, MessageSquare } from 'lucide-react';
+import { Settings, Users, Plus, Trophy, Award, Target, MessageSquare, Trash2 } from 'lucide-react';
 
 export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'matches' | 'polls'>('settings');
@@ -16,6 +16,9 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   const [matchData, setMatchData] = useState({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '' });
   const [customMatches, setCustomMatches] = useState<any[]>([]);
   const [automaticMatches, setAutomaticMatches] = useState<any[]>([]);
+  const [selectedAutoIds, setSelectedAutoIds] = useState<Set<string>>(new Set());
+  const [selectedCustomIds, setSelectedCustomIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Polls State
   const [polls, setPolls] = useState<any[]>([]);
@@ -114,6 +117,46 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
       }
     } catch (err) {
       alert('Error deleting match');
+    }
+  };
+
+  const toggleSelection = (id: string, set: Set<string>, setter: (s: Set<string>) => void) => {
+    const next = new Set(set);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    setter(next);
+  };
+
+  const toggleSelectAll = (matches: any[], set: Set<string>, setter: (s: Set<string>) => void) => {
+    if (set.size === matches.length) {
+      setter(new Set());
+    } else {
+      setter(new Set(matches.map(m => m.id)));
+    }
+  };
+
+  const handleBulkDelete = async (ids: Set<string>, setter: (s: Set<string>) => void) => {
+    const idsArr = Array.from(ids);
+    if (idsArr.length === 0) { alert('No matches selected'); return; }
+    if (!confirm(`Delete ${idsArr.length} match(es) and all their predictions? This cannot be undone.`)) return;
+    setBulkDeleting(true);
+    try {
+      const res = await fetch('/api/admin/custom-match', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsArr })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+        setter(new Set());
+        fetchMatches();
+      } else {
+        alert(data.error || 'Failed to delete matches');
+      }
+    } catch (err) {
+      alert('Error deleting matches');
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -274,11 +317,47 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
           </div>
 
           <div className="glass-panel p-6 rounded-xl space-y-4">
-            <h4 className="text-lg font-bold text-slate-300">Automatic Matches (Synced)</h4>
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-bold text-slate-300">Automatic Matches (Synced)</h4>
+              <div className="flex items-center gap-3">
+                {automaticMatches.length > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-400 hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedAutoIds.size === automaticMatches.length && automaticMatches.length > 0}
+                      onChange={() => toggleSelectAll(automaticMatches, selectedAutoIds, setSelectedAutoIds)}
+                      className="w-4 h-4 rounded border-white/20 bg-slate-900 accent-rose-500"
+                    />
+                    Select All
+                  </label>
+                )}
+                {selectedAutoIds.size > 0 && (
+                  <button
+                    onClick={() => handleBulkDelete(selectedAutoIds, setSelectedAutoIds)}
+                    disabled={bulkDeleting}
+                    className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors animate-pulse"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {bulkDeleting ? 'Deleting...' : `Delete ${selectedAutoIds.size} Selected`}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
               {automaticMatches.map((m) => (
-                <div key={m.id} className="flex items-center justify-between bg-slate-900/50 p-4 rounded-xl border border-white/5">
-                  <div className="space-y-1">
+                <div
+                  key={m.id}
+                  className={`flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border transition-colors cursor-pointer ${selectedAutoIds.has(m.id) ? 'border-rose-500/60 bg-rose-900/20' : 'border-white/5 hover:border-white/15'}`}
+                  onClick={() => toggleSelection(m.id, selectedAutoIds, setSelectedAutoIds)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedAutoIds.has(m.id)}
+                    onChange={() => toggleSelection(m.id, selectedAutoIds, setSelectedAutoIds)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded border-white/20 bg-slate-900 accent-rose-500 flex-shrink-0"
+                  />
+                  <div className="flex-1 space-y-1">
                     <div className="font-bold text-white flex items-center gap-2">
                       <span>{m.homeTeam?.name || 'TBD'}</span>
                       <span className="text-xs text-slate-500 font-mono">vs</span>
@@ -289,10 +368,10 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                     </div>
                   </div>
                   <button 
-                    onClick={() => handleDeleteMatch(m.id)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMatch(m.id); }}
                     className="bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 px-3 py-1.5 rounded-lg font-bold border border-rose-500/50 text-xs transition-colors"
                   >
-                    Delete from App
+                    Delete
                   </button>
                 </div>
               ))}
@@ -303,11 +382,47 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
           </div>
 
           <div className="glass-panel p-6 rounded-xl space-y-4">
-            <h4 className="text-lg font-bold text-slate-300">Custom Matches</h4>
-            <div className="space-y-2 max-h-64 overflow-y-auto pr-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-lg font-bold text-slate-300">Custom Matches</h4>
+              <div className="flex items-center gap-3">
+                {customMatches.length > 0 && (
+                  <label className="flex items-center gap-2 cursor-pointer text-sm text-slate-400 hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedCustomIds.size === customMatches.length && customMatches.length > 0}
+                      onChange={() => toggleSelectAll(customMatches, selectedCustomIds, setSelectedCustomIds)}
+                      className="w-4 h-4 rounded border-white/20 bg-slate-900 accent-rose-500"
+                    />
+                    Select All
+                  </label>
+                )}
+                {selectedCustomIds.size > 0 && (
+                  <button
+                    onClick={() => handleBulkDelete(selectedCustomIds, setSelectedCustomIds)}
+                    disabled={bulkDeleting}
+                    className="flex items-center gap-2 bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors animate-pulse"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    {bulkDeleting ? 'Deleting...' : `Delete ${selectedCustomIds.size} Selected`}
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
               {customMatches.map((m) => (
-                <div key={m.id} className="flex items-center justify-between bg-slate-900/50 p-4 rounded-xl border border-white/5">
-                  <div className="space-y-1">
+                <div
+                  key={m.id}
+                  className={`flex items-center gap-3 bg-slate-900/50 p-4 rounded-xl border transition-colors cursor-pointer ${selectedCustomIds.has(m.id) ? 'border-rose-500/60 bg-rose-900/20' : 'border-white/5 hover:border-white/15'}`}
+                  onClick={() => toggleSelection(m.id, selectedCustomIds, setSelectedCustomIds)}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCustomIds.has(m.id)}
+                    onChange={() => toggleSelection(m.id, selectedCustomIds, setSelectedCustomIds)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded border-white/20 bg-slate-900 accent-rose-500 flex-shrink-0"
+                  />
+                  <div className="flex-1 space-y-1">
                     <div className="font-bold text-white flex items-center gap-2">
                       <span>{m.homeTeam?.name || 'TBD'}</span>
                       <span className="text-xs text-slate-500 font-mono">vs</span>
@@ -318,7 +433,7 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                     </div>
                   </div>
                   <button 
-                    onClick={() => handleDeleteMatch(m.id)}
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMatch(m.id); }}
                     className="bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 px-3 py-1.5 rounded-lg font-bold border border-rose-500/50 text-xs transition-colors"
                   >
                     Remove
