@@ -40,13 +40,13 @@ export async function POST(request: Request) {
       if (addPoints) {
         await prisma.user.update({
           where: { id: user.id },
-          data: { points: { increment: 5 } } // Assume 5 points for a major bonus poll
+          data: { points: { increment: 2 } } // Assume 2 points for a major bonus poll
         });
         updatedUsers++;
       }
     }
 
-    return NextResponse.json({ message: `Successfully awarded 5 points to ${updatedUsers} users for ${type}.`, updatedUsers });
+    return NextResponse.json({ message: `Successfully awarded 2 points to ${updatedUsers} users for ${type}.`, updatedUsers });
   } catch (error) {
     console.error('Resolve Polls Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

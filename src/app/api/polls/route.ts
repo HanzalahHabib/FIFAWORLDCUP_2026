@@ -32,9 +32,20 @@ export async function GET(request: Request) {
       orderBy: { createdAt: 'asc' },
     });
 
-    const teams = await prisma.team.findMany({
-      orderBy: { name: 'asc' },
-    });
+    // If there are no active polls, return immediately to save a DB query
+    if (activePolls.length === 0) {
+      return NextResponse.json({ polls: [], teams: [] });
+    }
+
+    // Check if any active poll is team-based (options array is empty)
+    const hasTeamPoll = activePolls.some(p => !p.options || p.options.length === 0);
+    
+    let teams: any[] = [];
+    if (hasTeamPoll) {
+      teams = await prisma.team.findMany({
+        orderBy: { name: 'asc' },
+      });
+    }
 
     return NextResponse.json({ polls: activePolls, teams });
   } catch (error) {
@@ -59,10 +70,10 @@ export async function POST(request: Request) {
 
     const userId = payload.userId as string;
     const body = await request.json();
-    const { pollId, teamId } = body;
+    const { pollId, teamId, option } = body;
 
-    if (!pollId || !teamId) {
-      return NextResponse.json({ error: 'pollId and teamId are required' }, { status: 400 });
+    if (!pollId || (!teamId && !option)) {
+      return NextResponse.json({ error: 'pollId and either teamId or option are required' }, { status: 400 });
     }
 
     // Check if the poll is active
@@ -76,7 +87,8 @@ export async function POST(request: Request) {
       data: {
         pollId,
         userId,
-        teamId,
+        teamId: teamId || null,
+        option: option || null,
       },
     });
 

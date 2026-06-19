@@ -23,6 +23,7 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   // Polls State
   const [polls, setPolls] = useState<any[]>([]);
   const [newPollQuestion, setNewPollQuestion] = useState('');
+  const [newPollOptions, setNewPollOptions] = useState('');
   const [pollResolutions, setPollResolutions] = useState<{ [key: string]: string }>({});
 
   const fetchSettings = async () => {
@@ -60,12 +61,18 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
     }
   };
 
+  // Lazy loading tab data to speed up response and render times
   useEffect(() => {
-    fetchSettings();
-    fetchUsers();
-    fetchMatches();
-    fetchPolls();
-  }, []);
+    if (activeTab === 'settings') {
+      fetchSettings();
+    } else if (activeTab === 'users') {
+      fetchUsers();
+    } else if (activeTab === 'matches') {
+      fetchMatches();
+    } else if (activeTab === 'polls') {
+      fetchPolls();
+    }
+  }, [activeTab]);
 
   const handleSaveSettings = async () => {
     await fetch('/api/admin/settings', {
@@ -162,13 +169,18 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
 
   const handleCreatePoll = async (e: React.FormEvent) => {
     e.preventDefault();
+    const optionsArray = newPollOptions
+      ? newPollOptions.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+
     const res = await fetch('/api/admin/polls', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: newPollQuestion })
+      body: JSON.stringify({ question: newPollQuestion, options: optionsArray })
     });
     if (res.ok) {
       setNewPollQuestion('');
+      setNewPollOptions('');
       fetchPolls();
     } else {
       const data = await res.json();
@@ -192,20 +204,30 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   };
 
   const handleResolvePoll = async (pollId: string) => {
-    const resultTeamId = pollResolutions[pollId];
-    if (!resultTeamId) {
-      alert('Please select a winning team first');
+    const selected = pollResolutions[pollId];
+    if (!selected) {
+      alert('Please select a winner first');
       return;
     }
+    const pollObj = polls.find(p => p.id === pollId);
+    const isCustom = pollObj && pollObj.options && pollObj.options.length > 0;
+
     const res = await fetch('/api/admin/polls', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: pollId, action: 'RESOLVE', resultTeamId })
+      body: JSON.stringify({ 
+        id: pollId, 
+        action: 'RESOLVE', 
+        resultTeamId: isCustom ? undefined : selected,
+        resultOption: isCustom ? selected : undefined
+      })
     });
     const data = await res.json();
     alert(data.message || data.error);
     fetchPolls();
-    fetchUsers(); // To refresh points
+    if (activeTab === 'users') {
+      fetchUsers(); // Refresh points if users tab is already active
+    }
   };
 
   return (
@@ -259,9 +281,18 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                        <h4 className="text-xs font-bold text-slate-300 uppercase mb-2">Match Picks</h4>
                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                          {u.picks.map((p: any) => (
-                           <div key={p.id} className="text-xs bg-black/50 p-2 rounded flex justify-between">
-                             <span className="text-slate-400">{p.match?.homeTeam?.name} vs {p.match?.awayTeam?.name}</span>
-                             <span className="font-bold text-emerald-400">{p.prediction === 'HOME' ? p.match?.homeTeam?.name : p.prediction === 'AWAY' ? p.match?.awayTeam?.name : 'DRAW'}</span>
+                           <div key={p.id} className="text-xs bg-black/50 p-3 rounded flex flex-col md:flex-row md:items-center justify-between gap-2 border border-white/5">
+                             <div>
+                               <div className="text-slate-300 font-medium">{p.match?.homeTeam?.name} vs {p.match?.awayTeam?.name}</div>
+                               {p.match?.kickoffTimeUTC && (
+                                 <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                   {new Date(p.match.kickoffTimeUTC).toLocaleString()}
+                                 </div>
+                               )}
+                             </div>
+                             <span className="font-bold text-emerald-400 whitespace-nowrap">
+                               {p.prediction === 'HOME' ? p.match?.homeTeam?.name : p.prediction === 'AWAY' ? p.match?.awayTeam?.name : 'DRAW'}
+                             </span>
                            </div>
                          ))}
                        </div>
@@ -451,74 +482,146 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
       {activeTab === 'polls' && (
         <div className="glass-panel p-6 rounded-xl space-y-6">
           <h3 className="text-xl font-bold flex items-center gap-2"><MessageSquare className="w-5 h-5 text-cyan-400"/> Dynamic Custom Polls</h3>
-          <p className="text-sm text-slate-400">Create questions for users to answer (e.g., "Who will be unbeaten?"). Activate them to show them as a popup. When ready, select the winner and click "Resolve" to award 5 points to correct users.</p>
+          <p className="text-sm text-slate-400">Create questions for users to answer. You can either use default team picks or enter custom options. Activate them to show them as a popup. When ready, select the winner and click "Resolve" to award 2 points to correct users.</p>
 
-          <form onSubmit={handleCreatePoll} className="flex gap-2">
-            <input 
-              type="text" 
-              placeholder="E.g. Which team will have 0 wins?" 
-              value={newPollQuestion} 
-              onChange={e => setNewPollQuestion(e.target.value)} 
-              className="flex-1 bg-slate-900 border border-white/10 rounded p-2 text-white" 
-              required
-            />
+          <form onSubmit={handleCreatePoll} className="space-y-4">
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Poll Question</label>
+              <input 
+                type="text" 
+                placeholder="E.g. Who will win the Golden Boot?" 
+                value={newPollQuestion} 
+                onChange={e => setNewPollQuestion(e.target.value)} 
+                className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white" 
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-400 mb-1">Custom Options (Optional - comma-separated, leave empty to default to all Teams)</label>
+              <input 
+                type="text" 
+                placeholder="E.g. Messi, Mbappe, Haaland, Other" 
+                value={newPollOptions} 
+                onChange={e => setNewPollOptions(e.target.value)} 
+                className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white" 
+              />
+            </div>
             <button type="submit" className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded font-medium">Create Poll</button>
           </form>
 
           <div className="space-y-4 mt-6">
-            {polls.map(poll => (
-              <div key={poll.id} className="border border-white/10 p-4 rounded-lg bg-slate-900/30 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                <div className="flex-1">
-                  <div className="font-bold text-white text-lg">{poll.question}</div>
-                  <div className="text-sm text-slate-400 mt-1">
-                    Status: <span className={poll.isActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}>{poll.isActive ? 'Active (Popping up)' : 'Inactive'}</span>
-                    {' '}• Votes: {poll._count?.votes || 0}
-                  </div>
-                  {poll.resultTeamId && (
-                    <div className="text-sm text-amber-400 mt-1">
-                      Resolved! Winning Team: {poll.resultTeam?.name}
-                    </div>
-                  )}
-                </div>
+            {polls.map(poll => {
+              // Calculate vote breakdown summary for premium feel
+              const voteCounts: { [key: string]: number } = {};
+              poll.votes?.forEach((vote: any) => {
+                const choice = vote.option || vote.team?.name || 'Unknown';
+                voteCounts[choice] = (voteCounts[choice] || 0) + 1;
+              });
 
-                <div className="flex flex-col gap-2 min-w-[200px]">
-                  {!poll.resultTeamId && (
-                    <>
-                      <button 
-                        onClick={() => handleTogglePollActive(poll.id, !poll.isActive)}
-                        className={`px-3 py-1.5 rounded-lg font-bold border text-xs transition-colors ${poll.isActive ? 'bg-amber-600/20 text-amber-400 border-amber-500/50 hover:bg-amber-600/40' : 'bg-emerald-600/20 text-emerald-400 border-emerald-500/50 hover:bg-emerald-600/40'}`}
-                      >
-                        {poll.isActive ? 'Deactivate Popup' : 'Activate Popup'}
-                      </button>
-                      
-                      <div className="flex gap-2 mt-2">
-                        <select 
-                          value={pollResolutions[poll.id] || ''} 
-                          onChange={e => setPollResolutions({...pollResolutions, [poll.id]: e.target.value})} 
-                          className="flex-1 bg-black border border-white/10 rounded p-1.5 text-xs text-white"
-                        >
-                          <option value="">Select Winner...</option>
-                          {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                        </select>
-                        <button 
-                          onClick={() => handleResolvePoll(poll.id)}
-                          className="bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 px-2 py-1.5 rounded-lg font-bold border border-indigo-500/50 text-xs"
-                        >
-                          Resolve
-                        </button>
+              return (
+                <div key={poll.id} className="border border-white/10 p-4 rounded-lg bg-slate-900/30 flex flex-col gap-4">
+                  <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                    <div className="flex-1">
+                      <div className="font-bold text-white text-lg">{poll.question}</div>
+                      <div className="text-sm text-slate-400 mt-1">
+                        Status: <span className={poll.isActive ? 'text-emerald-400 font-bold' : 'text-slate-500'}>{poll.isActive ? 'Active (Popping up)' : 'Inactive'}</span>
+                        {' '}• Votes: {poll._count?.votes || 0}
+                        {poll.options && poll.options.length > 0 && (
+                          <span className="text-cyan-400"> • Custom Options Poll</span>
+                        )}
                       </div>
-                    </>
-                  )}
-                  
-                  <button 
-                    onClick={() => handleDeletePoll(poll.id)}
-                    className="bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 px-3 py-1.5 rounded-lg font-bold border border-rose-500/50 text-xs transition-colors mt-2"
-                  >
-                    Delete Poll
-                  </button>
+                      
+                      {/* Vote breakdown summary */}
+                      {poll.votes && poll.votes.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {Object.entries(voteCounts).map(([choice, count]) => (
+                            <span key={choice} className="text-xs bg-cyan-950/40 text-cyan-300 border border-cyan-500/20 px-2 py-0.5 rounded-full font-mono">
+                              {choice}: {count}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {poll.resultTeamId && (
+                        <div className="text-sm text-amber-400 mt-1">
+                          Resolved! Winning Team: {poll.resultTeam?.name}
+                        </div>
+                      )}
+                      {poll.resultOption && (
+                        <div className="text-sm text-amber-400 mt-1">
+                          Resolved! Winning Option: {poll.resultOption}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex flex-col gap-2 min-w-[200px]">
+                      {(!poll.resultTeamId && !poll.resultOption) && (
+                        <>
+                          <button 
+                            onClick={() => handleTogglePollActive(poll.id, !poll.isActive)}
+                            className={`px-3 py-1.5 rounded-lg font-bold border text-xs transition-colors ${poll.isActive ? 'bg-amber-600/20 text-amber-400 border-amber-500/50 hover:bg-amber-600/40' : 'bg-emerald-600/20 text-emerald-400 border-emerald-500/50 hover:bg-emerald-600/40'}`}
+                          >
+                            {poll.isActive ? 'Deactivate Popup' : 'Activate Popup'}
+                          </button>
+                          
+                          <div className="flex gap-2 mt-2">
+                            <select 
+                              value={pollResolutions[poll.id] || ''} 
+                              onChange={e => setPollResolutions({...pollResolutions, [poll.id]: e.target.value})} 
+                              className="flex-1 bg-black border border-white/10 rounded p-1.5 text-xs text-white"
+                            >
+                              <option value="">Select Winner...</option>
+                              {poll.options && poll.options.length > 0 ? (
+                                poll.options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)
+                              ) : (
+                                teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)
+                              )}
+                            </select>
+                            <button 
+                              onClick={() => handleResolvePoll(poll.id)}
+                              className="bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/40 px-2 py-1.5 rounded-lg font-bold border border-indigo-500/50 text-xs"
+                            >
+                              Resolve
+                            </button>
+                          </div>
+                        </>
+                      )}
+                      
+                      <button 
+                        onClick={() => handleDeletePoll(poll.id)}
+                        className="bg-rose-600/20 text-rose-400 hover:bg-rose-600/40 px-3 py-1.5 rounded-lg font-bold border border-rose-500/50 text-xs transition-colors mt-2"
+                      >
+                        Delete Poll
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Individual Votes list collapsible detail */}
+                  <details className="mt-2 bg-black/40 border border-white/5 rounded-lg p-3 group">
+                    <summary className="text-xs font-bold text-slate-400 cursor-pointer hover:text-white select-none">
+                      View Individual Picks ({poll.votes?.length || 0})
+                    </summary>
+                    <div className="mt-3 space-y-1.5 max-h-60 overflow-y-auto pr-2 pt-2 border-t border-white/5">
+                      {poll.votes && poll.votes.length > 0 ? (
+                        poll.votes.map((vote: any) => {
+                          const choice = vote.option || vote.team?.name || 'Unknown Choice';
+                          return (
+                            <div key={vote.id} className="text-xs bg-slate-950 p-2 rounded flex justify-between">
+                              <span className="text-slate-400 font-medium">
+                                {vote.user?.name} <span className="text-slate-600 font-mono">({vote.user?.email})</span>
+                              </span>
+                              <span className="font-bold text-cyan-400">{choice}</span>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="text-xs text-slate-500 py-2">No picks recorded yet.</div>
+                      )}
+                    </div>
+                  </details>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {polls.length === 0 && (
               <div className="text-center py-6 text-slate-500 text-sm">No polls created yet.</div>
             )}

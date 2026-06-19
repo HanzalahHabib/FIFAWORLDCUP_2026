@@ -33,17 +33,34 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Fetch all users and their picks
+    // 2. Fetch all resolved custom polls
+    const resolvedPolls = await prisma.poll.findMany({
+      where: {
+        OR: [
+          { resultTeamId: { not: null } },
+          { resultOption: { not: null } }
+        ]
+      }
+    });
+
+    // 3. Fetch global settings for tournament actual outcomes
+    const settings = await prisma.settings.findUnique({ where: { id: 'global' } });
+
+    // 4. Fetch all users, their picks and poll votes
     const users = await prisma.user.findMany({
-      include: { picks: true }
+      include: { 
+        picks: true,
+        pollVotes: true
+      }
     });
 
     let updatedUsers = 0;
 
-    // 3. Calculate Base Scoring
+    // 5. Calculate Total Points for each user
     for (const user of users) {
       let totalPoints = 0;
       
+      // A. Match prediction points (+1 per correct pick)
       for (const pick of user.picks) {
         if (actualResults.has(pick.matchId)) {
           if (pick.prediction === actualResults.get(pick.matchId)) {
@@ -52,11 +69,32 @@ export async function POST(request: Request) {
         }
       }
 
-      // Bonus Logic (Simplified for demonstration - typically runs at tournament end)
-      // Top 4, Unbeaten, No-Win would be evaluated here if tournament is marked as 'ENDED'
-      // Example: if (tournamentEnded) { if (user.unbeatenTeamId === unbeatenTeam.id) totalPoints += 2; }
+      // B. Custom Poll votes points (+2 per correct vote)
+      for (const poll of resolvedPolls) {
+        const userVote = user.pollVotes.find(v => v.pollId === poll.id);
+        if (userVote) {
+          if (poll.resultTeamId && userVote.teamId === poll.resultTeamId) {
+            totalPoints += 2;
+          } else if (poll.resultOption && userVote.option === poll.resultOption) {
+            totalPoints += 2;
+          }
+        }
+      }
 
-      // Update user
+      // C. Tournament end-game bonus points (+2 per correct bonus)
+      if (settings) {
+        if (settings.actualChampionId && user.firstPlaceId === settings.actualChampionId) {
+          totalPoints += 2;
+        }
+        if (settings.actualUnbeatenTeamId && user.unbeatenTeamId === settings.actualUnbeatenTeamId) {
+          totalPoints += 2;
+        }
+        if (settings.actualNoWinTeamId && user.noWinTeamId === settings.actualNoWinTeamId) {
+          totalPoints += 2;
+        }
+      }
+
+      // Update user if database value is out of sync
       if (user.points !== totalPoints) {
         await prisma.user.update({
           where: { id: user.id },
@@ -67,7 +105,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: 'Scores recalculated successfully',
+      message: 'Scores recalculated successfully including Match Picks, Polls, and Bonuses.',
       updatedUsers
     });
 

@@ -29,6 +29,23 @@ export async function GET(request: Request) {
           select: { votes: true },
         },
         resultTeam: true,
+        votes: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+              }
+            },
+            team: {
+              select: {
+                id: true,
+                name: true,
+              }
+            }
+          }
+        }
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -48,7 +65,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { question } = body;
+    const { question, options } = body;
 
     if (!question) {
       return NextResponse.json({ error: 'Question is required' }, { status: 400 });
@@ -57,6 +74,7 @@ export async function POST(request: Request) {
     const poll = await prisma.poll.create({
       data: {
         question,
+        options: Array.isArray(options) ? options : [],
         isActive: false, // Inactive by default
       },
     });
@@ -101,7 +119,7 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json();
-    const { id, action, isActive, resultTeamId } = body;
+    const { id, action, isActive, resultTeamId, resultOption } = body;
 
     if (!id || !action) {
       return NextResponse.json({ error: 'ID and action are required' }, { status: 400 });
@@ -116,29 +134,40 @@ export async function PUT(request: Request) {
     }
 
     if (action === 'RESOLVE') {
-      if (!resultTeamId) {
-        return NextResponse.json({ error: 'Result Team ID is required to resolve' }, { status: 400 });
+      if (!resultTeamId && !resultOption) {
+        return NextResponse.json({ error: 'Result Team ID or Custom Option is required to resolve' }, { status: 400 });
       }
 
       // Mark the poll result
       const poll = await prisma.poll.update({
         where: { id },
         data: { 
-          resultTeamId,
+          resultTeamId: resultTeamId || null,
+          resultOption: resultOption || null,
           isActive: false // Deactivate after resolving
         },
       });
 
       // Find all correct votes
-      const correctVotes = await prisma.pollVote.findMany({
-        where: {
-          pollId: id,
-          teamId: resultTeamId,
-        },
-      });
+      let correctVotes = [];
+      if (resultTeamId) {
+        correctVotes = await prisma.pollVote.findMany({
+          where: {
+            pollId: id,
+            teamId: resultTeamId,
+          },
+        });
+      } else if (resultOption) {
+        correctVotes = await prisma.pollVote.findMany({
+          where: {
+            pollId: id,
+            option: resultOption,
+          },
+        });
+      }
 
-      // Award points (e.g., 5 points for correct poll vote)
-      const POINTS_AWARD = 5;
+      // Award points (e.g., 2 points for correct poll vote)
+      const POINTS_AWARD = 2;
       
       const userIdsToReward = correctVotes.map(v => v.userId);
 

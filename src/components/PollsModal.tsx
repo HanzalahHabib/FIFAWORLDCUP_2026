@@ -6,7 +6,7 @@ export default function PollsModal() {
   const [polls, setPolls] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [currentPollIndex, setCurrentPollIndex] = useState(0);
-  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [selectedChoice, setSelectedChoice] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,11 +36,12 @@ export default function PollsModal() {
   if (!isOpen || polls.length === 0) return null;
 
   const currentPoll = polls[currentPollIndex];
+  const isCustomOption = currentPoll.options && currentPoll.options.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTeamId) {
-      alert('Please select a team');
+    if (!selectedChoice) {
+      alert('Please select an option');
       return;
     }
 
@@ -49,14 +50,18 @@ export default function PollsModal() {
       const res = await fetch('/api/polls', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pollId: currentPoll.id, teamId: selectedTeamId }),
+        body: JSON.stringify({ 
+          pollId: currentPoll.id, 
+          teamId: isCustomOption ? undefined : selectedChoice,
+          option: isCustomOption ? selectedChoice : undefined
+        }),
       });
 
       if (res.ok) {
         // Move to next poll or close
         if (currentPollIndex < polls.length - 1) {
           setCurrentPollIndex(prev => prev + 1);
-          setSelectedTeamId('');
+          setSelectedChoice('');
         } else {
           setIsOpen(false);
         }
@@ -74,7 +79,7 @@ export default function PollsModal() {
   const handleSkip = () => {
     if (currentPollIndex < polls.length - 1) {
       setCurrentPollIndex(prev => prev + 1);
-      setSelectedTeamId('');
+      setSelectedChoice('');
     } else {
       setIsOpen(false);
     }
@@ -103,15 +108,21 @@ export default function PollsModal() {
           <div>
             <label className="block text-sm text-slate-400 mb-2">Select Your Answer</label>
             <select
-              value={selectedTeamId}
-              onChange={(e) => setSelectedTeamId(e.target.value)}
+              value={selectedChoice}
+              onChange={(e) => setSelectedChoice(e.target.value)}
               className="w-full bg-black/50 border border-white/10 rounded-xl p-3 text-white appearance-none focus:outline-none focus:border-indigo-500 transition-colors"
               required
             >
-              <option value="" disabled>Choose a team...</option>
-              {teams.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
+              <option value="" disabled>Choose an option...</option>
+              {isCustomOption ? (
+                currentPoll.options.map((opt: string) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))
+              ) : (
+                teams.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))
+              )}
             </select>
           </div>
 
@@ -125,7 +136,7 @@ export default function PollsModal() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !selectedTeamId}
+              disabled={isSubmitting || !selectedChoice}
               className="flex-1 py-3 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all shadow-[0_0_20px_rgba(79,70,229,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? 'Saving...' : 'Submit Answer'}
