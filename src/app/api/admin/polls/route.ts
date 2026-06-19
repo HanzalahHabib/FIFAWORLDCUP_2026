@@ -149,7 +149,7 @@ export async function PUT(request: Request) {
       });
 
       // Find all correct votes
-      let correctVotes = [];
+      let correctVotes: any[] = [];
       if (resultTeamId) {
         correctVotes = await prisma.pollVote.findMany({
           where: {
