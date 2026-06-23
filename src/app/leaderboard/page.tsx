@@ -42,7 +42,7 @@ export default async function LeaderboardPage() {
                     {user.name} {user.role === 'ADMIN' && <Star className="w-4 h-4 text-indigo-400" />}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${user.cohort === 'US Team' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${user.cohort === 'West Side' ? 'bg-indigo-500/20 text-indigo-300' : 'bg-emerald-500/20 text-emerald-300'}`}>
                       {user.cohort}
                     </span>
                   </td>

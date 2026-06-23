@@ -13,23 +13,47 @@ export async function GET() {
       where: { status: 'FINISHED' }
     });
 
+    // Fetch finished matches to compute true prediction accuracy
+    const finishedMatches = await prisma.match.findMany({
+      where: { status: 'FINISHED' }
+    });
+
+    const actualResults = new Map<string, string>();
+    for (const match of finishedMatches) {
+      if (match.homeScore! > match.awayScore!) {
+        actualResults.set(match.id, 'HOME');
+      } else if (match.awayScore! > match.homeScore!) {
+        actualResults.set(match.id, 'AWAY');
+      } else {
+        actualResults.set(match.id, 'DRAW');
+      }
+    }
+
     const analytics = {
-      usTeam: { totalUsers: 0, totalPoints: 0, totalPicks: 0, correctPicks: 0, averagePoints: 0, accuracyPercent: 0 },
-      pkTeam: { totalUsers: 0, totalPoints: 0, totalPicks: 0, correctPicks: 0, averagePoints: 0, accuracyPercent: 0 }
+      westSide: { totalUsers: 0, totalPoints: 0, totalPicks: 0, correctPicks: 0, averagePoints: 0, accuracyPercent: 0 },
+      eastSide: { totalUsers: 0, totalPoints: 0, totalPicks: 0, correctPicks: 0, averagePoints: 0, accuracyPercent: 0 }
     };
 
     for (const user of users) {
-      const cohort = user.cohort === 'US Team' ? analytics.usTeam : analytics.pkTeam;
+      // Map cohort name: 'West Side' or 'US Team' goes to westSide, others to eastSide
+      const cohort = (user.cohort === 'West Side' || user.cohort === 'US Team') ? analytics.westSide : analytics.eastSide;
       
       cohort.totalUsers += 1;
       cohort.totalPoints += user.points;
-      // We assume user.points = correct picks for now (base scoring)
-      cohort.correctPicks += user.points;
-      cohort.totalPicks += user.picks.length;
+      
+      // Calculate true match prediction correctness
+      for (const pick of user.picks) {
+        if (actualResults.has(pick.matchId)) {
+          cohort.totalPicks += 1;
+          if (pick.prediction === actualResults.get(pick.matchId)) {
+            cohort.correctPicks += 1;
+          }
+        }
+      }
     }
 
     // Calculate Averages and Accuracy
-    for (const cohort of [analytics.usTeam, analytics.pkTeam]) {
+    for (const cohort of [analytics.westSide, analytics.eastSide]) {
       cohort.averagePoints = cohort.totalUsers > 0 ? (cohort.totalPoints / cohort.totalUsers) : 0;
       cohort.accuracyPercent = cohort.totalPicks > 0 ? (cohort.correctPicks / cohort.totalPicks) * 100 : 0;
     }

@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 export default function RegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    name: '', email: '', password: '', gender: 'Male', cohort: 'US Team'
+    name: '', email: '', password: '', gender: 'Male', cohort: 'West Side'
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -71,8 +71,8 @@ export default function RegisterPage() {
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1">Cohort</label>
               <select value={formData.cohort} onChange={e => setFormData({...formData, cohort: e.target.value})} className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                <option>US Team</option>
-                <option>PK Team</option>
+                <option>West Side</option>
+                <option>East Side</option>
               </select>
             </div>
           </div>

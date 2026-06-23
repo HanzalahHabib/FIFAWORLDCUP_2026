@@ -55,7 +55,7 @@ export default function Home() {
             <Users className="w-8 h-8" />
           </div>
           <h3 className="text-xl font-bold text-white">Cohort Battles</h3>
-          <p className="text-slate-400 text-sm">US Team vs PK Team. Track aggregate performance and accuracy in real-time.</p>
+          <p className="text-slate-400 text-sm">West Side vs East Side. Track aggregate performance and accuracy in real-time.</p>
         </div>
 
         <div className="glass-panel p-6 rounded-2xl flex flex-col items-center text-center space-y-4 hover:border-pink-500/30 transition-colors">

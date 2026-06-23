@@ -16,7 +16,7 @@ model User {
   passwordHash   String
   name           String
   gender         String?
-  cohort         String     // "US Team" or "PK Team"
+  cohort         String     // "West Side" or "East Side"
   role           String     @default("USER") // "USER" or "ADMIN"
   points         Int        @default(0)
   

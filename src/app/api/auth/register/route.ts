@@ -13,8 +13,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    if (cohort !== 'US Team' && cohort !== 'PK Team') {
-      return NextResponse.json({ error: 'Cohort must be either "US Team" or "PK Team"' }, { status: 400 });
+    if (cohort !== 'West Side' && cohort !== 'East Side') {
+      return NextResponse.json({ error: 'Cohort must be either "West Side" or "East Side"' }, { status: 400 });
     }
 
     // Check if user exists
