@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users, Plus, Trophy, Award, Target, MessageSquare, Trash2 } from 'lucide-react';
+import { Settings, Users, Plus, Trophy, Award, Target, MessageSquare, Trash2, Download } from 'lucide-react';
 
 export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'matches' | 'polls'>('settings');
@@ -256,7 +256,17 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
 
       {activeTab === 'users' && (
         <div className="glass-panel p-6 rounded-xl space-y-4">
-           <h3 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5 text-emerald-400"/> Leaderboard Point Edit</h3>
+           <div className="flex items-center justify-between">
+             <h3 className="text-xl font-bold flex items-center gap-2"><Users className="w-5 h-5 text-emerald-400"/> Leaderboard Point Edit</h3>
+             <a
+               href="/api/admin/export-csv"
+               download
+               className="flex items-center gap-2 bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/40 px-4 py-2 rounded-lg font-bold border border-cyan-500/50 text-sm transition-colors"
+             >
+               <Download className="w-4 h-4" />
+               Export Picks CSV
+             </a>
+           </div>
            <div className="max-h-96 overflow-y-auto space-y-2 pr-2">
              {users.map(u => (
                <details key={u.id} className="bg-slate-900/50 rounded border border-white/5 group">

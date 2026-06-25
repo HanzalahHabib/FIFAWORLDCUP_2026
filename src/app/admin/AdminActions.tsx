@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { RefreshCw, Calculator } from 'lucide-react';
+import { RefreshCw, Calculator, Download } from 'lucide-react';
 
 export default function AdminActions() {
   const [syncing, setSyncing] = useState(false);
@@ -80,6 +80,16 @@ export default function AdminActions() {
           <Calculator className={`w-5 h-5 ${addingPoints ? 'animate-pulse' : ''}`} />
           {addingPoints ? 'Adding...' : 'Give 1 Point to All'}
         </button>
+
+        <a 
+          href="/api/admin/export-csv"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/50 text-indigo-300 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-colors"
+        >
+          <Download className="w-5 h-5" />
+          Export All Data (CSV)
+        </a>
       </div>
 
       {message && (

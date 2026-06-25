@@ -20,6 +20,9 @@ export async function POST(request: Request) {
       data: {
         points: {
           increment: 1
+        },
+        manualPoints: {
+          increment: 1
         }
       }
     });

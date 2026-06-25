@@ -19,6 +19,7 @@ model User {
   cohort         String     // "West Side" or "East Side"
   role           String     @default("USER") // "USER" or "ADMIN"
   points         Int        @default(0)
+  manualPoints   Int        @default(0)
   
   // Bonus selections
   firstPlaceId   String?

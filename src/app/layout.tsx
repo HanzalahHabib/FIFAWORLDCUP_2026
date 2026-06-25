@@ -49,7 +49,7 @@ export default async function RootLayout({
                 <div className="hidden md:flex space-x-4">
                   <Link href="/matches" className="text-sm text-slate-300 hover:text-white transition-colors">Matches</Link>
                   <Link href="/leaderboard" className="text-sm text-slate-300 hover:text-white transition-colors">Leaderboard</Link>
-                  <Link href="/analytics" className="text-sm text-slate-300 hover:text-white transition-colors">US vs PK</Link>
+                  <Link href="/analytics" className="text-sm text-slate-300 hover:text-white transition-colors">East vs West</Link>
                 </div>
               </div>
               <NavbarAuth isLoggedIn={isLoggedIn} userRole={userRole} />

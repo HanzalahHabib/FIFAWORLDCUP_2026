@@ -58,7 +58,7 @@ export async function POST(request: Request) {
 
     // 5. Calculate Total Points for each user
     for (const user of users) {
-      let totalPoints = 0;
+      let totalPoints = user.manualPoints || 0;
       
       // A. Match prediction points (+1 per correct pick)
       for (const pick of user.picks) {
