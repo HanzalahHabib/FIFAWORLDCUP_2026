@@ -48,6 +48,7 @@ export default async function RootLayout({
                 </Link>
                 <div className="hidden md:flex space-x-4">
                   <Link href="/matches" className="text-sm text-slate-300 hover:text-white transition-colors">Matches</Link>
+                  <Link href="/bracket" className="text-sm text-slate-300 hover:text-white transition-colors font-semibold text-indigo-300">Bracket</Link>
                   <Link href="/leaderboard" className="text-sm text-slate-300 hover:text-white transition-colors">Leaderboard</Link>
                   <Link href="/analytics" className="text-sm text-slate-300 hover:text-white transition-colors">East vs West</Link>
                 </div>

@@ -400,9 +400,9 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                   />
                   <div className="flex-1 space-y-1">
                     <div className="font-bold text-white flex items-center gap-2">
-                      <span>{m.homeTeam?.name || 'TBD'}</span>
+                      <span>{m.homeTeam?.name || m.homeTeamLabel || 'TBD'}</span>
                       <span className="text-xs text-slate-500 font-mono">vs</span>
-                      <span>{m.awayTeam?.name || 'TBD'}</span>
+                      <span>{m.awayTeam?.name || m.awayTeamLabel || 'TBD'}</span>
                     </div>
                     <div className="text-xs text-slate-400 font-mono">
                       Kickoff: {new Date(m.kickoffTimeUTC).toLocaleString()}
@@ -465,9 +465,9 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                   />
                   <div className="flex-1 space-y-1">
                     <div className="font-bold text-white flex items-center gap-2">
-                      <span>{m.homeTeam?.name || 'TBD'}</span>
+                      <span>{m.homeTeam?.name || m.homeTeamLabel || 'TBD'}</span>
                       <span className="text-xs text-slate-500 font-mono">vs</span>
-                      <span>{m.awayTeam?.name || 'TBD'}</span>
+                      <span>{m.awayTeam?.name || m.awayTeamLabel || 'TBD'}</span>
                     </div>
                     <div className="text-xs text-slate-400 font-mono">
                       Kickoff: {new Date(m.kickoffTimeUTC).toLocaleString()}

@@ -19,6 +19,30 @@ interface Fixture {
   hostCity: string;
 }
 
+// Map stage names from the API to our internal round labels
+const STAGE_MAP: Record<string, string> = {
+  'group-stage': 'group-stage',
+  'round-of-32': 'round-of-32',
+  'round-of-16': 'round-of-16',
+  'quarter-finals': 'quarter-finals',
+  'semi-finals': 'semi-finals',
+  'third-place': 'third-place',
+  'final': 'final',
+};
+
+// Detect if a team name is a placeholder (not a real team name)
+function isPlaceholder(name: string): boolean {
+  const lower = name.toLowerCase();
+  return (
+    lower.includes('winner') ||
+    lower.includes('loser') ||
+    lower.includes('group ') ||
+    lower.includes('runners-up') ||
+    lower.includes('third place') ||
+    lower.includes('third-place')
+  );
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Authenticate & Verify Admin Role
@@ -29,6 +53,25 @@ export async function POST(request: Request) {
     const payload = await verifyToken(token);
     if (!payload || payload.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Auto-migrate schema changes before performing sync
+    try {
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Match" ADD COLUMN IF NOT EXISTS "round" TEXT NOT NULL DEFAULT 'group-stage';
+      `);
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Match" ADD COLUMN IF NOT EXISTS "homeTeamLabel" TEXT;
+      `);
+      await prisma.$executeRawUnsafe(`
+        ALTER TABLE "Match" ADD COLUMN IF NOT EXISTS "awayTeamLabel" TEXT;
+      `);
+      await prisma.$executeRawUnsafe(`
+        CREATE INDEX IF NOT EXISTS "Match_round_idx" ON "Match"("round");
+      `);
+      console.log('Auto-migration ran successfully during match sync');
+    } catch (migErr: any) {
+      console.warn('Auto-migration warning (columns might exist):', migErr.message);
     }
 
     // 2. Fetch fixtures from TheStatsAPI
@@ -46,8 +89,9 @@ export async function POST(request: Request) {
 
     // 3. Filter to group-stage matches only (these have real team names)
     const groupStageFixtures = fixtures.filter(f => f.stage === 'group-stage' && f.group);
+    const knockoutFixtures = fixtures.filter(f => f.stage !== 'group-stage');
 
-    // 4. Extract unique teams with their groups
+    // 4. Extract unique teams with their groups from group stage
     const teamMap = new Map<string, string>(); // teamName -> group
     for (const fixture of groupStageFixtures) {
       if (fixture.homeTeam && fixture.group) {
@@ -83,9 +127,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // 6. Create matches that don't already exist
+    // 6. Create/update group-stage matches that don't already exist
     let matchesCreated = 0;
     let matchesSkipped = 0;
+    let matchesUpdated = 0;
 
     for (const fixture of groupStageFixtures) {
       const homeTeamId = teamIdMap.get(fixture.homeTeam);
@@ -98,43 +143,112 @@ export async function POST(request: Request) {
 
       const kickoffTimeUTC = new Date(fixture.kickoffUtc);
 
-      // Check if this match already exists (by apiFootballId or by same teams + kickoff)
       const existingMatch = await prisma.match.findFirst({
         where: {
           OR: [
             { apiFootballId: fixture.matchNumber },
-            {
-              homeTeamId,
-              awayTeamId,
-              kickoffTimeUTC
-            }
+            { homeTeamId, awayTeamId, kickoffTimeUTC }
           ]
         }
       });
 
       if (existingMatch) {
-        matchesSkipped++;
+        // Update round if missing
+        if ((existingMatch as any).round !== 'group-stage') {
+          await (prisma.match.update as any)({
+            where: { id: existingMatch.id },
+            data: { round: 'group-stage' }
+          });
+          matchesUpdated++;
+        } else {
+          matchesSkipped++;
+        }
         continue;
       }
 
-      await prisma.match.create({
+      await (prisma.match.create as any)({
         data: {
           homeTeamId,
           awayTeamId,
           kickoffTimeUTC,
           status: 'SCHEDULED',
-          apiFootballId: fixture.matchNumber
+          apiFootballId: fixture.matchNumber,
+          round: 'group-stage',
         }
       });
       matchesCreated++;
     }
 
-    // 7. Remove stale automatic matches that are no longer in the fixtures
+    // 7. Create/update knockout stage matches
+    let knockoutCreated = 0;
+    let knockoutSkipped = 0;
+    let knockoutUpdated = 0;
+
+    for (const fixture of knockoutFixtures) {
+      const round = STAGE_MAP[fixture.stage] || fixture.stage;
+      const kickoffTimeUTC = new Date(fixture.kickoffUtc);
+
+      // For knockout matches, teams are placeholders unless we know who won
+      const homeLabel = fixture.homeTeam;
+      const awayLabel = fixture.awayTeam;
+      const homeIsReal = !isPlaceholder(homeLabel);
+      const awayIsReal = !isPlaceholder(awayLabel);
+
+      const homeTeamId = homeIsReal ? (teamIdMap.get(homeLabel) || null) : null;
+      const awayTeamId = awayIsReal ? (teamIdMap.get(awayLabel) || null) : null;
+
+      // Check if knockout match already exists
+      const existingMatch = await prisma.match.findFirst({
+        where: { apiFootballId: fixture.matchNumber }
+      });
+
+      if (existingMatch) {
+        // Update with labels if they've changed or are missing
+        const updates: Record<string, any> = {};
+        const existing = existingMatch as any;
+        if (existing.round !== round) updates.round = round;
+        if (existing.homeTeamLabel !== homeLabel) updates.homeTeamLabel = homeLabel;
+        if (existing.awayTeamLabel !== awayLabel) updates.awayTeamLabel = awayLabel;
+        // If teams are now known (real), update the IDs
+        if (homeTeamId && !existing.homeTeamId) updates.homeTeamId = homeTeamId;
+        if (awayTeamId && !existing.awayTeamId) updates.awayTeamId = awayTeamId;
+
+        if (Object.keys(updates).length > 0) {
+          await (prisma.match.update as any)({
+            where: { id: existingMatch.id },
+            data: updates,
+          });
+          knockoutUpdated++;
+        } else {
+          knockoutSkipped++;
+        }
+        continue;
+      }
+
+      // Create new knockout match
+      await (prisma.match.create as any)({
+        data: {
+          apiFootballId: fixture.matchNumber,
+          homeTeamId: homeTeamId || null,
+          awayTeamId: awayTeamId || null,
+          homeTeamLabel: homeLabel,
+          awayTeamLabel: awayLabel,
+          kickoffTimeUTC,
+          status: 'SCHEDULED',
+          round,
+        }
+      });
+      knockoutCreated++;
+    }
+
+    // 8. Remove stale group-stage matches that are no longer in the fixtures
     const validMatchNumbers = groupStageFixtures.map(f => f.matchNumber);
+    const allValidMatchNumbers = fixtures.map(f => f.matchNumber);
+    
     const staleMatches = await prisma.match.findMany({
       where: {
         apiFootballId: { not: null },
-        NOT: { apiFootballId: { in: validMatchNumbers } }
+        NOT: { apiFootballId: { in: allValidMatchNumbers } }
       },
       select: { id: true }
     });
@@ -147,14 +261,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: `Sync complete! Teams: ${teamsCreated} created, ${teamsUpdated} updated. Matches: ${matchesCreated} created, ${matchesSkipped} already existed, ${matchesRemoved} stale removed.`,
+      message: `Sync complete! Teams: ${teamsCreated} created, ${teamsUpdated} updated. Group stage: ${matchesCreated} created, ${matchesSkipped} existing. Knockout: ${knockoutCreated} created, ${knockoutUpdated} updated, ${knockoutSkipped} unchanged. Stale removed: ${matchesRemoved}.`,
       teamsCreated,
       teamsUpdated,
-      matchesCreated,
-      matchesSkipped,
+      groupStage: { created: matchesCreated, skipped: matchesSkipped, updated: matchesUpdated },
+      knockout: { created: knockoutCreated, updated: knockoutUpdated, skipped: knockoutSkipped },
       matchesRemoved,
       totalTeams: teamMap.size,
-      totalGroupStageFixtures: groupStageFixtures.length
+      totalFixtures: fixtures.length
     });
 
   } catch (error) {

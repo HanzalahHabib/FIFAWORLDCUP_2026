@@ -62,6 +62,9 @@ model Match {
   status         String   @default("SCHEDULED") // "SCHEDULED", "IN_PLAY", "FINISHED"
   homeScore      Int?
   awayScore      Int?
+  round          String   @default("group-stage") // "group-stage", "round-of-32", "round-of-16", "quarter-finals", "semi-finals", "third-place", "final"
+  homeTeamLabel  String?  // For knockout TBD slots: e.g. "Group A winners"
+  awayTeamLabel  String?  // For knockout TBD slots: e.g. "Group B runners-up"
 
   homeTeam       Team?    @relation("HomeMatches", fields: [homeTeamId], references: [id])
   awayTeam       Team?    @relation("AwayMatches", fields: [awayTeamId], references: [id])
@@ -71,6 +74,7 @@ model Match {
   updatedAt      DateTime @updatedAt
 
   @@index([kickoffTimeUTC])
+  @@index([round])
 }
 
 model Pick {

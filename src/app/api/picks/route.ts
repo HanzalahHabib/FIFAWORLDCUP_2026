@@ -3,6 +3,27 @@ import prisma from '@/lib/prisma';
 import { verifyToken } from '@/lib/auth';
 import { cookies } from 'next/headers';
 
+export async function GET() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    if (!token) return NextResponse.json([], { status: 200 });
+
+    const payload = await verifyToken(token);
+    if (!payload) return NextResponse.json([], { status: 200 });
+
+    const picks = await prisma.pick.findMany({
+      where: { userId: payload.userId },
+      select: { matchId: true, prediction: true }
+    });
+
+    return NextResponse.json(picks);
+  } catch (error) {
+    console.error('Fetch Picks Error:', error);
+    return NextResponse.json([], { status: 200 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Authenticate User
@@ -33,6 +54,13 @@ export async function POST(request: Request) {
     const match = await prisma.match.findUnique({ where: { id: matchId } });
     if (!match) {
       return NextResponse.json({ error: 'Match not found' }, { status: 404 });
+    }
+
+    // Reject DRAW for knockout rounds
+    const knockoutRounds = ['round-of-32', 'round-of-16', 'quarter-finals', 'semi-finals', 'third-place', 'final'];
+    const matchRound = (match as any).round ?? 'group-stage';
+    if (prediction === 'DRAW' && knockoutRounds.includes(matchRound)) {
+      return NextResponse.json({ error: 'Draw is not allowed in knockout rounds. Pick a winner.' }, { status: 400 });
     }
 
     // STRICT GUARDRAIL LOGIC: Time-Lock Validation
