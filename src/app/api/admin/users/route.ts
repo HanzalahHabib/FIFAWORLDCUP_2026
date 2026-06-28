@@ -16,6 +16,26 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Real team names for R32 matches (keyed by apiFootballId / match number)
+    const R32_REAL_TEAMS: Record<number, { home: string; away: string }> = {
+      73: { home: 'South Africa', away: 'Canada' },
+      74: { home: 'Germany',      away: 'Paraguay' },
+      75: { home: 'Netherlands',  away: 'Morocco' },
+      76: { home: 'Portugal',     away: 'Croatia' },
+      77: { home: 'France',       away: 'Sweden' },
+      78: { home: 'Brazil',       away: 'Japan' },
+      79: { home: 'Spain',        away: 'Austria' },
+      80: { home: 'Argentina',    away: 'Cape Verde' },
+      81: { home: 'England',      away: 'DR Congo' },
+      82: { home: 'USA',          away: 'Bosnia-Herz.' },
+      83: { home: 'Mexico',       away: 'Ecuador' },
+      84: { home: 'Belgium',      away: 'Senegal' },
+      85: { home: 'Colombia',     away: 'Ghana' },
+      86: { home: 'Switzerland',  away: 'Algeria' },
+      87: { home: 'Ivory Coast',  away: 'Norway' },
+      88: { home: 'Australia',    away: 'Egypt' },
+    };
+
     // Use raw SQL to get users with picks including homeTeamLabel/awayTeamLabel for knockout matches
     const users = await prisma.user.findMany({
       select: { 
@@ -49,21 +69,28 @@ export async function GET() {
       orderBy: { points: 'desc' }
     });
 
-    // Enrich picks with homeTeamLabel/awayTeamLabel/round from raw SQL (bypasses stale Prisma client)
+    // Enrich picks with homeTeamLabel/awayTeamLabel/round/apiFootballId via raw SQL
     const matchIds = [...new Set(users.flatMap(u => u.picks.map((p: any) => p.matchId)))];
-    let labelMap: Record<string, { homeTeamLabel: string | null; awayTeamLabel: string | null; round: string }> = {};
+    let labelMap: Record<string, { homeTeamLabel: string | null; awayTeamLabel: string | null; round: string; apiFootballId: number | null }> = {};
     if (matchIds.length > 0) {
       const placeholders = matchIds.map((_: string, i: number) => `$${i + 1}`).join(', ');
       const labelRows = await prisma.$queryRawUnsafe(
-        `SELECT id, "homeTeamLabel", "awayTeamLabel", round FROM "Match" WHERE id IN (${placeholders})`,
+        `SELECT id, "homeTeamLabel", "awayTeamLabel", round, "apiFootballId" FROM "Match" WHERE id IN (${placeholders})`,
         ...matchIds
       ) as any[];
       for (const row of labelRows) {
-        labelMap[row.id] = { homeTeamLabel: row.homeTeamLabel, awayTeamLabel: row.awayTeamLabel, round: row.round };
+        // Override placeholder labels with real team names if we have them
+        const realTeams = row.apiFootballId ? R32_REAL_TEAMS[Number(row.apiFootballId)] : null;
+        labelMap[row.id] = {
+          homeTeamLabel: realTeams ? realTeams.home : (row.homeTeamLabel ?? null),
+          awayTeamLabel: realTeams ? realTeams.away : (row.awayTeamLabel ?? null),
+          round: row.round ?? 'group-stage',
+          apiFootballId: row.apiFootballId ?? null,
+        };
       }
     }
 
-    // Merge label data into picks
+    // Merge enriched data into picks
     const enrichedUsers = users.map(u => ({
       ...u,
       picks: u.picks.map((p: any) => ({
@@ -83,6 +110,7 @@ export async function GET() {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
 
 export async function POST(request: Request) {
   try {
