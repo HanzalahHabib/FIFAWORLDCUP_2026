@@ -289,23 +289,32 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                    {u.picks && u.picks.length > 0 && (
                      <div>
                        <h4 className="text-xs font-bold text-slate-300 uppercase mb-2">Match Picks</h4>
-                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                         {u.picks.map((p: any) => (
-                           <div key={p.id} className="text-xs bg-black/50 p-3 rounded flex flex-col md:flex-row md:items-center justify-between gap-2 border border-white/5">
-                             <div>
-                               <div className="text-slate-300 font-medium">{p.match?.homeTeam?.name} vs {p.match?.awayTeam?.name}</div>
-                               {p.match?.kickoffTimeUTC && (
-                                 <div className="text-[10px] text-slate-500 font-mono mt-0.5">
-                                   {new Date(p.match.kickoffTimeUTC).toLocaleString()}
-                                 </div>
-                               )}
-                             </div>
-                             <span className="font-bold text-emerald-400 whitespace-nowrap">
-                               {p.prediction === 'HOME' ? p.match?.homeTeam?.name : p.prediction === 'AWAY' ? p.match?.awayTeam?.name : 'DRAW'}
-                             </span>
-                           </div>
-                         ))}
-                       </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {u.picks.map((p: any) => {
+                            const home = p.match?.homeTeam?.name || p.match?.homeTeamLabel || 'TBD';
+                            const away = p.match?.awayTeam?.name || p.match?.awayTeamLabel || 'TBD';
+                            const roundMap: Record<string,string> = { 'group-stage':'Group','round-of-32':'R32','round-of-16':'R16','quarter-finals':'QF','semi-finals':'SF','final':'Final' };
+                            const roundLabel = roundMap[p.match?.round] || (p.match?.round || '');
+                            const isKnockout = p.match?.round && p.match.round !== 'group-stage';
+                            const pickedTeam = p.prediction === 'HOME' ? home : p.prediction === 'AWAY' ? away : 'DRAW';
+                            return (
+                              <div key={p.id} className="text-xs bg-black/50 p-3 rounded flex flex-col md:flex-row md:items-center justify-between gap-2 border border-white/5">
+                                <div>
+                                  {roundLabel && (
+                                    <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded mb-1 inline-block ${isKnockout ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'}`}>{roundLabel}</span>
+                                  )}
+                                  <div className="text-slate-300 font-medium">{home} vs {away}</div>
+                                  {p.match?.kickoffTimeUTC && (
+                                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                      {new Date(p.match.kickoffTimeUTC).toLocaleString()}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="font-bold text-emerald-400 whitespace-nowrap">{pickedTeam}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
                      </div>
                    )}
                    {(u.firstPlaceId || u.unbeatenTeamId || u.noWinTeamId) && (

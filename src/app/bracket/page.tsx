@@ -82,29 +82,45 @@ export default function BracketPage() {
   const [dbMatchIds, setDbMatchIds] = useState<Record<number, string>>({}); // apiFootballId -> dbId
 
   useEffect(() => {
-    // Load user picks
-    fetch('/api/picks')
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          const pickMap: Record<string, 'HOME' | 'DRAW' | 'AWAY'> = {};
-          data.forEach((p: UserPick) => { pickMap[p.matchId] = p.prediction; });
-          setPicks(pickMap);
-          setIsLoggedIn(true);
-        }
-      })
-      .catch(() => setIsLoggedIn(false));
+    // Load picks AND r32-ids in parallel, then cross-reference so picks display correctly
+    Promise.all([
+      fetch('/api/picks').then(r => r.json()).catch(() => []),
+      fetch('/api/matches/r32-ids').then(r => r.json()).catch(() => ({})),
+    ]).then(([picksData, idsData]) => {
+      // idsData = { [matchNum]: dbUUID }  e.g. { "73": "clxyz..." }
+      if (idsData && typeof idsData === 'object') {
+        setDbMatchIds(idsData);
+      }
 
-    // Load DB match IDs mapped to apiFootballId (so we can post picks)
-    fetch('/api/matches/r32-ids')
-      .then(r => r.json())
-      .then(data => {
-        if (data && typeof data === 'object') {
-          setDbMatchIds(data); // { [apiFootballId]: dbId }
-        }
-      })
-      .catch(() => {});
+      if (Array.isArray(picksData) && picksData.length >= 0) {
+        setIsLoggedIn(true);
+
+        // Build reverse map: dbUUID → matchNum
+        const dbIdToMatchNum: Record<string, number> = {};
+        Object.entries(idsData || {}).forEach(([matchNum, dbId]) => {
+          dbIdToMatchNum[dbId as string] = Number(matchNum);
+        });
+
+        // Build matchNum → localId from our hardcoded list
+        const matchNumToLocalId: Record<number, string> = {};
+        ROUND_OF_32.forEach(m => { matchNumToLocalId[m.matchNum] = m.id; });
+
+        const pickMap: Record<string, 'HOME' | 'DRAW' | 'AWAY'> = {};
+        picksData.forEach((p: UserPick) => {
+          // Always store by DB id (for safety)
+          pickMap[p.matchId] = p.prediction as 'HOME' | 'DRAW' | 'AWAY';
+          // Also store by local id so bracket UI can find it
+          const matchNum = dbIdToMatchNum[p.matchId];
+          if (matchNum) {
+            const localId = matchNumToLocalId[matchNum];
+            if (localId) pickMap[localId] = p.prediction as 'HOME' | 'DRAW' | 'AWAY';
+          }
+        });
+        setPicks(pickMap);
+      }
+    });
   }, []);
+
 
 
   const handlePick = async (matchNum: number, localId: string, prediction: 'HOME' | 'DRAW' | 'AWAY') => {
