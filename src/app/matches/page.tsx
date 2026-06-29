@@ -51,7 +51,7 @@ async function fetchMatchesRaw(userId: string | null, round: string) {
   return rows.map((r: any) => ({
     id: r.id,
     apiFootballId: r.apiFootballId,
-    kickoffTimeUTC: r.kickoffTimeUTC,
+    kickoffTimeUTC: r.kickoffTimeUTC instanceof Date ? r.kickoffTimeUTC.toISOString() : r.kickoffTimeUTC,
     status: r.status,
     homeScore: r.homeScore,
     awayScore: r.awayScore,

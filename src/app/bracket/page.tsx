@@ -204,12 +204,18 @@ export default function BracketPage() {
       }`}>
         {/* Header */}
         <div className={`flex items-center justify-between px-4 py-2 text-[11px] font-bold uppercase tracking-widest ${
-          isLive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800/60 text-slate-400'
+          isLive 
+            ? 'bg-emerald-500/20 text-emerald-400' 
+            : isFinished 
+            ? 'bg-slate-800/60 text-slate-400' 
+            : isLocked 
+            ? 'bg-rose-950/30 text-rose-400' 
+            : 'bg-slate-800/60 text-slate-400'
         }`}>
           <span>Match #{match.matchNum}</span>
           <span className="flex items-center gap-1.5" suppressHydrationWarning>
             {isLive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
-            {isLive ? 'LIVE' : isFinished ? 'FT' : `${dateStr} · ${timeStr}`}
+            {isLive ? 'LIVE' : isFinished ? 'FT' : isLocked ? 'LOCKED' : `${dateStr} · ${timeStr}`}
           </span>
         </div>
 
