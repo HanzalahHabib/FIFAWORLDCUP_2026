@@ -40,7 +40,8 @@ interface Match {
   time: string;
   homeScore: number | null;
   awayScore: number | null;
-  status: 'SCHEDULED' | 'LIVE' | 'FINISHED';
+  status: string;
+  kickoffTimeUTC?: string;
 }
 
 interface UserPick {
@@ -75,6 +76,7 @@ function FlagEmoji({ team }: { team: string }) {
 }
 
 export default function BracketPage() {
+  const [matches, setMatches] = useState<Match[]>(ROUND_OF_32);
   const [picks, setPicks] = useState<Record<string, 'HOME' | 'DRAW' | 'AWAY'>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -82,15 +84,42 @@ export default function BracketPage() {
   const [dbMatchIds, setDbMatchIds] = useState<Record<number, string>>({}); // apiFootballId -> dbId
 
   useEffect(() => {
-    // Load picks AND r32-ids in parallel, then cross-reference so picks display correctly
+    // Load picks AND r32 matches in parallel, then cross-reference
     Promise.all([
       fetch('/api/picks').then(r => r.json()).catch(() => []),
-      fetch('/api/matches/r32-ids').then(r => r.json()).catch(() => ({})),
-    ]).then(([picksData, idsData]) => {
-      // idsData = { [matchNum]: dbUUID }  e.g. { "73": "clxyz..." }
+      fetch('/api/matches/r32-ids').then(r => r.json()).catch(() => ({ ids: {}, matches: [] })),
+    ]).then(([picksData, r32Data]) => {
+      const idsData = r32Data?.ids || {};
+      const dbMatches = r32Data?.matches || [];
+
       if (idsData && typeof idsData === 'object') {
         setDbMatchIds(idsData);
       }
+
+      // Merge database match details (status, scores, kickoffTimeUTC) into ROUND_OF_32
+      const mergedMatches = ROUND_OF_32.map(m => {
+        const dbM = dbMatches.find((x: any) => x.apiFootballId === m.matchNum);
+        if (dbM) {
+          return {
+            ...m,
+            id: dbM.id,
+            status: dbM.status,
+            homeScore: dbM.homeScore,
+            awayScore: dbM.awayScore,
+            kickoffTimeUTC: dbM.kickoffTimeUTC,
+          };
+        }
+        return m;
+      });
+
+      // Sort by date and time (kickoffTimeUTC) ascending
+      mergedMatches.sort((a, b) => {
+        const timeA = a.kickoffTimeUTC ? new Date(a.kickoffTimeUTC).getTime() : 0;
+        const timeB = b.kickoffTimeUTC ? new Date(b.kickoffTimeUTC).getTime() : 0;
+        return timeA - timeB;
+      });
+
+      setMatches(mergedMatches);
 
       if (Array.isArray(picksData) && picksData.length >= 0) {
         setIsLoggedIn(true);
@@ -152,9 +181,20 @@ export default function BracketPage() {
 
   const MatchCard = ({ match }: { match: Match }) => {
     const userPick = picks[match.id];
-    const isLive = match.status === 'LIVE';
-    const isFinished = match.status === 'FINISHED';
-    const isLocked = isLive || isFinished;
+    const kickoff = match.kickoffTimeUTC ? new Date(match.kickoffTimeUTC) : null;
+    const now = new Date();
+    
+    // Status completion and live checks
+    const isFinished = match.status === 'FINISHED' || (match.homeScore !== null && match.awayScore !== null);
+    const isLive = !isFinished && (match.status === 'LIVE' || match.status === 'IN_PLAY' || match.status === 'HALFTIME');
+    const isLocked = (kickoff && now >= kickoff) || isFinished;
+
+    const dateStr = kickoff
+      ? kickoff.toLocaleDateString([], { month: 'short', day: 'numeric' })
+      : match.date;
+    const timeStr = kickoff
+      ? kickoff.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : match.time;
 
     return (
       <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
@@ -167,9 +207,9 @@ export default function BracketPage() {
           isLive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800/60 text-slate-400'
         }`}>
           <span>Match #{match.matchNum}</span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-1.5" suppressHydrationWarning>
             {isLive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
-            {isLive ? 'LIVE' : isFinished ? 'FT' : `${match.date} · ${match.time}`}
+            {isLive ? 'LIVE' : isFinished ? 'FT' : `${dateStr} · ${timeStr}`}
           </span>
         </div>
 
@@ -299,7 +339,7 @@ export default function BracketPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {ROUND_OF_32.map(match => (
+          {matches.map(match => (
             <MatchCard key={match.id} match={match} />
           ))}
         </div>
