@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Settings, Users, Plus, Trophy, Award, Target, MessageSquare, Trash2, Download } from 'lucide-react';
 
 export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
-  const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'matches' | 'polls'>('settings');
+  const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'matches' | 'polls' | 'results'>('settings');
   
   // Settings State
   const [settings, setSettings] = useState<any>(null);
@@ -19,6 +19,15 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   const [selectedAutoIds, setSelectedAutoIds] = useState<Set<string>>(new Set());
   const [selectedCustomIds, setSelectedCustomIds] = useState<Set<string>>(new Set());
   const [bulkDeleting, setBulkDeleting] = useState(false);
+
+  // Match Override State
+  const [overrideMatchNumber, setOverrideMatchNumber] = useState('');
+  const [overrideHomeScore, setOverrideHomeScore] = useState('');
+  const [overrideAwayScore, setOverrideAwayScore] = useState('');
+  const [overrideStatus, setOverrideStatus] = useState('FINISHED');
+  const [overrideKickoff, setOverrideKickoff] = useState('');
+  const [overrideMessage, setOverrideMessage] = useState<{text: string, ok: boolean} | null>(null);
+  const [overrideLoading, setOverrideLoading] = useState(false);
 
   // Polls State
   const [polls, setPolls] = useState<any[]>([]);
@@ -58,6 +67,31 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
       }
     } catch (err) {
       console.error('Error fetching polls:', err);
+    }
+  };
+
+  const handleMatchOverride = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOverrideLoading(true);
+    setOverrideMessage(null);
+    try {
+      const res = await fetch('/api/admin/update-match', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          matchNumber: Number(overrideMatchNumber),
+          status: overrideStatus,
+          homeScore: overrideHomeScore !== '' ? Number(overrideHomeScore) : undefined,
+          awayScore: overrideAwayScore !== '' ? Number(overrideAwayScore) : undefined,
+          kickoffTimeUTC: overrideKickoff || undefined,
+        })
+      });
+      const data = await res.json();
+      setOverrideMessage({ text: data.message || data.error, ok: res.ok });
+    } catch (err) {
+      setOverrideMessage({ text: 'Network error', ok: false });
+    } finally {
+      setOverrideLoading(false);
     }
   };
 
@@ -232,11 +266,12 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
 
   return (
     <div className="mt-12 space-y-6">
-      <div className="flex space-x-2 border-b border-white/10 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-white/10 pb-2">
         <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'settings' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Settings</button>
         <button onClick={() => setActiveTab('users')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'users' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Users & Points</button>
         <button onClick={() => setActiveTab('matches')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'matches' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Manage Matches</button>
         <button onClick={() => setActiveTab('polls')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'polls' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}>Manage Polls</button>
+        <button onClick={() => setActiveTab('results')} className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'results' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-white'}`}>⚽ Match Results</button>
       </div>
 
       {activeTab === 'settings' && settings && (
@@ -644,6 +679,98 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
             {polls.length === 0 && (
               <div className="text-center py-6 text-slate-500 text-sm">No polls created yet.</div>
             )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'results' && (
+        <div className="glass-panel p-6 rounded-xl space-y-6">
+          <div>
+            <h3 className="text-xl font-bold flex items-center gap-2 mb-1">
+              ⚽ Match Results Override
+            </h3>
+            <p className="text-sm text-slate-400">
+              Manually mark a match as Finished and set the score. Use the match number (e.g. 80, 83) from the bracket. This immediately locks predictions for that match.
+            </p>
+          </div>
+
+          <form onSubmit={handleMatchOverride} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Match Number *</label>
+                <input
+                  type="number"
+                  required
+                  placeholder="e.g. 80"
+                  value={overrideMatchNumber}
+                  onChange={e => setOverrideMatchNumber(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white placeholder-slate-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Status *</label>
+                <select
+                  value={overrideStatus}
+                  onChange={e => setOverrideStatus(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white"
+                >
+                  <option value="FINISHED">FINISHED (locks predictions)</option>
+                  <option value="LIVE">LIVE (locks predictions)</option>
+                  <option value="SCHEDULED">SCHEDULED (unlocks predictions)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Home Score</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 3"
+                  value={overrideHomeScore}
+                  onChange={e => setOverrideHomeScore(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white placeholder-slate-600"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Away Score</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="e.g. 1"
+                  value={overrideAwayScore}
+                  onChange={e => setOverrideAwayScore(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white placeholder-slate-600"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm text-slate-400 mb-1">Kickoff Time Override (optional — UTC)</label>
+                <input
+                  type="datetime-local"
+                  value={overrideKickoff}
+                  onChange={e => setOverrideKickoff(e.target.value)}
+                  className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white"
+                />
+              </div>
+            </div>
+
+            {overrideMessage && (
+              <div className={`p-3 rounded-lg text-sm font-medium ${overrideMessage.ok ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-500/30' : 'bg-rose-900/50 text-rose-300 border border-rose-500/30'}`}>
+                {overrideMessage.ok ? '✅' : '❌'} {overrideMessage.text}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={overrideLoading}
+              className="bg-rose-600 hover:bg-rose-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+            >
+              {overrideLoading ? 'Updating...' : 'Update Match'}
+            </button>
+          </form>
+
+          <div className="border-t border-white/10 pt-4">
+            <p className="text-xs text-slate-500">
+              💡 <strong>Quick Reference:</strong> Match 80 = First R32 match. Match 83 = Fourth R32 match. Check your bracket page or the match admin tab to confirm match numbers.
+            </p>
           </div>
         </div>
       )}

@@ -43,6 +43,127 @@ function isPlaceholder(name: string): boolean {
   );
 }
 
+function normalizeTeamName(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .replace('republic', 'rep')
+    .replace('unitedstates', 'usa')
+    .replace('congodr', 'drcongo')
+    .replace('democraticrepublicofcongo', 'drcongo')
+    .replace('bosniaherzegovina', 'bosniaherz');
+}
+
+function mapSofascoreRound(roundName: string | undefined): string | null {
+  if (!roundName) return null;
+  const name = roundName.toLowerCase();
+  if (name.includes('round of 32') || name.includes('r32')) return 'round-of-32';
+  if (name.includes('round of 16') || name.includes('r16')) return 'round-of-16';
+  if (name.includes('quarter') || name.includes('qf')) return 'quarter-finals';
+  if (name.includes('semi') || name.includes('sf')) return 'semi-finals';
+  if (name.includes('third') || name.includes('3rd') || name.includes('playoff')) return 'third-place';
+  if (name.includes('final')) return 'final';
+  if (name.includes('group')) return 'group-stage';
+  return null;
+}
+
+function mapSofascoreStatus(statusType: string | undefined): string {
+  if (!statusType) return 'SCHEDULED';
+  const type = statusType.toLowerCase();
+  if (type === 'finished') return 'FINISHED';
+  if (type === 'inprogress' || type === 'live' || type === 'halftime') return 'LIVE';
+  return 'SCHEDULED';
+}
+
+function findMatchingSofascoreEvent(dbMatch: any, sfEvents: any[]) {
+  const dbHomeName = normalizeTeamName(dbMatch.homeTeam?.name || dbMatch.homeTeamLabel);
+  const dbAwayName = normalizeTeamName(dbMatch.awayTeam?.name || dbMatch.awayTeamLabel);
+  const dbKickoff = new Date(dbMatch.kickoffTimeUTC);
+  const dbRound = dbMatch.round;
+
+  // 1. Try exact team matches
+  const exactMatch = sfEvents.find(event => {
+    const sfHome = normalizeTeamName(event.homeTeam?.name);
+    const sfAway = normalizeTeamName(event.awayTeam?.name);
+    return sfHome === dbHomeName && sfAway === dbAwayName;
+  });
+  if (exactMatch) return exactMatch;
+
+  // 2. Try match by kickoff time (within 2 hours) and round
+  const timeAndRoundMatch = sfEvents.find(event => {
+    const sfKickoff = new Date(event.startTimestamp * 1000);
+    const diffHours = Math.abs(sfKickoff.getTime() - dbKickoff.getTime()) / (1000 * 60 * 60);
+    const sfRound = mapSofascoreRound(event.roundInfo?.name) || mapSofascoreRound(event.tournament?.name);
+
+    if (diffHours <= 2) {
+      if (sfRound && dbRound === sfRound) return true;
+      if (!sfRound) return true;
+    }
+    return false;
+  });
+
+  return timeAndRoundMatch;
+}
+
+async function fetchSofascoreEvents(path: 'last' | 'next'): Promise<any[]> {
+  const url = `https://api.sofascore.com/api/v1/unique-tournament/16/season/58210/events/${path}/0`;
+  const directHeaders = {
+    'authority': 'api.sofascore.com',
+    'accept': '*/*',
+    'accept-language': 'en-US,en;q=0.9',
+    'cache-control': 'no-cache',
+    'origin': 'https://www.sofascore.com',
+    'pragma': 'no-cache',
+    'referer': 'https://www.sofascore.com/',
+    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-site',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  };
+
+  try {
+    console.log(`Fetching Sofascore events (${path}) directly...`);
+    let sfRes = await fetch(url, { headers: directHeaders, cache: 'no-store' });
+    
+    if (!sfRes.ok) {
+      console.warn(`Direct Sofascore fetch (${path}) failed with status: ${sfRes.status}. Trying fallback proxy (corsproxy.io)...`);
+      const proxyHeaders = {
+        'accept': '*/*',
+        'accept-language': 'en-US,en;q=0.9',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      };
+      sfRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { headers: proxyHeaders, cache: 'no-store' });
+    }
+
+    if (!sfRes.ok) {
+      console.warn(`Corsproxy fetch (${path}) failed with status: ${sfRes.status}. Trying fallback proxy (allorigins)...`);
+      const proxyHeaders = {
+        'accept': '*/*',
+        'accept-language': 'en-US,en;q=0.9',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      };
+      sfRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { headers: proxyHeaders, cache: 'no-store' });
+    }
+
+    if (sfRes.ok) {
+      const sfData = await sfRes.json();
+      if (sfData && Array.isArray(sfData.events)) {
+        console.log(`Successfully fetched ${sfData.events.length} events from Sofascore (${path})!`);
+        return sfData.events;
+      }
+    } else {
+      console.error(`All Sofascore fetch attempts failed for (${path}). Status: ${sfRes.status}`);
+    }
+  } catch (err) {
+    console.error(`Exception during Sofascore fetch (${path}):`, err);
+  }
+  return [];
+}
+
 export async function POST(request: Request) {
   try {
     // 1. Authenticate & Verify Admin Role
@@ -87,11 +208,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No fixtures found in data source' }, { status: 404 });
     }
 
-    // 3. Filter to group-stage matches only (these have real team names)
+    // 3. Fetch events from Sofascore (both past and future matches)
+    let sofascoreEvents: any[] = [];
+    try {
+      const [lastEvents, nextEvents] = await Promise.all([
+        fetchSofascoreEvents('last'),
+        fetchSofascoreEvents('next')
+      ]);
+      sofascoreEvents = [...lastEvents, ...nextEvents];
+      console.log(`Combined Sofascore events count: ${sofascoreEvents.length}`);
+    } catch (sfErr) {
+      console.error('Error fetching from Sofascore:', sfErr);
+    }
+
+    // 4. Filter to group-stage matches only (these have real team names)
     const groupStageFixtures = fixtures.filter(f => f.stage === 'group-stage' && f.group);
     const knockoutFixtures = fixtures.filter(f => f.stage !== 'group-stage');
 
-    // 4. Extract unique teams with their groups from group stage
+    // 5. Extract unique teams with their groups from group stage
     const teamMap = new Map<string, string>(); // teamName -> group
     for (const fixture of groupStageFixtures) {
       if (fixture.homeTeam && fixture.group) {
@@ -102,7 +236,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Upsert all teams (create if not exists, update group if changed)
+    // 6. Upsert all teams (create if not exists, update group if changed)
     let teamsCreated = 0;
     let teamsUpdated = 0;
     const teamIdMap = new Map<string, string>(); // teamName -> teamId
@@ -127,7 +261,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // 6. Create/update group-stage matches that don't already exist
+    // Fetch all existing teams (including any manually added) for robust lookup
+    const allTeams = await prisma.team.findMany();
+    const normalizedTeamIdMap = new Map<string, string>();
+    for (const team of allTeams) {
+      normalizedTeamIdMap.set(normalizeTeamName(team.name), team.id);
+    }
+
+    // 7. Create/update group-stage matches that don't already exist (baseline)
     let matchesCreated = 0;
     let matchesSkipped = 0;
     let matchesUpdated = 0;
@@ -153,11 +294,14 @@ export async function POST(request: Request) {
       });
 
       if (existingMatch) {
-        // Update round if missing
-        if ((existingMatch as any).round !== 'group-stage') {
+        const updates: Record<string, any> = {};
+        const existing = existingMatch as any;
+        if (existing.round !== 'group-stage') updates.round = 'group-stage';
+
+        if (Object.keys(updates).length > 0) {
           await (prisma.match.update as any)({
             where: { id: existingMatch.id },
-            data: { round: 'group-stage' }
+            data: updates
           });
           matchesUpdated++;
         } else {
@@ -179,7 +323,7 @@ export async function POST(request: Request) {
       matchesCreated++;
     }
 
-    // 7. Create/update knockout stage matches
+    // 8. Create/update knockout stage matches (baseline)
     let knockoutCreated = 0;
     let knockoutSkipped = 0;
     let knockoutUpdated = 0;
@@ -188,28 +332,24 @@ export async function POST(request: Request) {
       const round = STAGE_MAP[fixture.stage] || fixture.stage;
       const kickoffTimeUTC = new Date(fixture.kickoffUtc);
 
-      // For knockout matches, teams are placeholders unless we know who won
       const homeLabel = fixture.homeTeam;
       const awayLabel = fixture.awayTeam;
       const homeIsReal = !isPlaceholder(homeLabel);
       const awayIsReal = !isPlaceholder(awayLabel);
 
-      const homeTeamId = homeIsReal ? (teamIdMap.get(homeLabel) || null) : null;
-      const awayTeamId = awayIsReal ? (teamIdMap.get(awayLabel) || null) : null;
+      const homeTeamId = homeIsReal ? (normalizedTeamIdMap.get(normalizeTeamName(homeLabel)) || null) : null;
+      const awayTeamId = awayIsReal ? (normalizedTeamIdMap.get(normalizeTeamName(awayLabel)) || null) : null;
 
-      // Check if knockout match already exists
       const existingMatch = await prisma.match.findFirst({
         where: { apiFootballId: fixture.matchNumber }
       });
 
       if (existingMatch) {
-        // Update with labels if they've changed or are missing
         const updates: Record<string, any> = {};
         const existing = existingMatch as any;
         if (existing.round !== round) updates.round = round;
         if (existing.homeTeamLabel !== homeLabel) updates.homeTeamLabel = homeLabel;
         if (existing.awayTeamLabel !== awayLabel) updates.awayTeamLabel = awayLabel;
-        // If teams are now known (real), update the IDs
         if (homeTeamId && !existing.homeTeamId) updates.homeTeamId = homeTeamId;
         if (awayTeamId && !existing.awayTeamId) updates.awayTeamId = awayTeamId;
 
@@ -225,7 +365,6 @@ export async function POST(request: Request) {
         continue;
       }
 
-      // Create new knockout match
       await (prisma.match.create as any)({
         data: {
           apiFootballId: fixture.matchNumber,
@@ -241,8 +380,65 @@ export async function POST(request: Request) {
       knockoutCreated++;
     }
 
-    // 8. Remove stale group-stage matches that are no longer in the fixtures
-    const validMatchNumbers = groupStageFixtures.map(f => f.matchNumber);
+    // 9. SOFASCORE UPDATE PASS (Update all matches using Sofascore as source of truth)
+    let sofascoreUpdates = 0;
+    if (sofascoreEvents.length > 0) {
+      const dbMatches = await prisma.match.findMany({
+        include: {
+          homeTeam: true,
+          awayTeam: true
+        }
+      });
+
+      for (const dbMatch of dbMatches) {
+        const sfEvent = findMatchingSofascoreEvent(dbMatch, sofascoreEvents);
+        if (sfEvent) {
+          const status = mapSofascoreStatus(sfEvent.status?.type);
+          const homeScore = sfEvent.homeScore?.current ?? sfEvent.homeScore?.display ?? null;
+          const awayScore = sfEvent.awayScore?.current ?? sfEvent.awayScore?.display ?? null;
+          const kickoffTimeUTC = new Date(sfEvent.startTimestamp * 1000);
+
+          let homeLabel = dbMatch.homeTeamLabel;
+          let awayLabel = dbMatch.awayTeamLabel;
+          let homeTeamId = dbMatch.homeTeamId;
+          let awayTeamId = dbMatch.awayTeamId;
+
+          // If Sofascore event has real resolved names instead of placeholders
+          if (sfEvent.homeTeam?.name && !isPlaceholder(sfEvent.homeTeam.name)) {
+            homeLabel = sfEvent.homeTeam.name;
+            const foundId = normalizedTeamIdMap.get(normalizeTeamName(sfEvent.homeTeam.name));
+            if (foundId) homeTeamId = foundId;
+          }
+          if (sfEvent.awayTeam?.name && !isPlaceholder(sfEvent.awayTeam.name)) {
+            awayLabel = sfEvent.awayTeam.name;
+            const foundId = normalizedTeamIdMap.get(normalizeTeamName(sfEvent.awayTeam.name));
+            if (foundId) awayTeamId = foundId;
+          }
+
+          // Build updates
+          const updates: Record<string, any> = {};
+          if (dbMatch.kickoffTimeUTC.getTime() !== kickoffTimeUTC.getTime()) updates.kickoffTimeUTC = kickoffTimeUTC;
+          if (dbMatch.status !== status) updates.status = status;
+          if (dbMatch.homeScore !== homeScore) updates.homeScore = homeScore;
+          if (dbMatch.awayScore !== awayScore) updates.awayScore = awayScore;
+          if (dbMatch.homeTeamLabel !== homeLabel) updates.homeTeamLabel = homeLabel;
+          if (dbMatch.awayTeamLabel !== awayLabel) updates.awayTeamLabel = awayLabel;
+          if (dbMatch.homeTeamId !== homeTeamId) updates.homeTeamId = homeTeamId;
+          if (dbMatch.awayTeamId !== awayTeamId) updates.awayTeamId = awayTeamId;
+
+          if (Object.keys(updates).length > 0) {
+            console.log(`[Sofascore Update] Match #${dbMatch.apiFootballId} (${dbMatch.homeTeam?.name || dbMatch.homeTeamLabel} vs ${dbMatch.awayTeam?.name || dbMatch.awayTeamLabel}):`, updates);
+            await (prisma.match.update as any)({
+              where: { id: dbMatch.id },
+              data: updates
+            });
+            sofascoreUpdates++;
+          }
+        }
+      }
+    }
+
+    // 10. Remove stale group-stage matches that are no longer in the fixtures
     const allValidMatchNumbers = fixtures.map(f => f.matchNumber);
     
     const staleMatches = await prisma.match.findMany({
@@ -261,11 +457,12 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: `Sync complete! Teams: ${teamsCreated} created, ${teamsUpdated} updated. Group stage: ${matchesCreated} created, ${matchesSkipped} existing. Knockout: ${knockoutCreated} created, ${knockoutUpdated} updated, ${knockoutSkipped} unchanged. Stale removed: ${matchesRemoved}.`,
+      message: `Sync complete! Teams: ${teamsCreated} created, ${teamsUpdated} updated. Group stage: ${matchesCreated} created, ${matchesSkipped} existing. Knockout: ${knockoutCreated} created, ${knockoutUpdated} updated, ${knockoutSkipped} unchanged. Sofascore updates: ${sofascoreUpdates}. Stale removed: ${matchesRemoved}.`,
       teamsCreated,
       teamsUpdated,
       groupStage: { created: matchesCreated, skipped: matchesSkipped, updated: matchesUpdated },
       knockout: { created: knockoutCreated, updated: knockoutUpdated, skipped: knockoutSkipped },
+      sofascoreUpdates,
       matchesRemoved,
       totalTeams: teamMap.size,
       totalFixtures: fixtures.length

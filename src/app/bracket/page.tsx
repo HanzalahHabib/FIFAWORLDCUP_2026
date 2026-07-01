@@ -6,22 +6,22 @@ import Link from 'next/link';
 
 // ─── Hardcoded ESPN Round of 32 Data (accurate as of Jun 28 2026) ─────────────
 const ROUND_OF_32: Match[] = [
-  { id: 'r32-1',  matchNum: 73,  home: 'South Africa', away: 'Canada',       date: 'Jun 28', time: 'LIVE', homeScore: 0, awayScore: 0, status: 'LIVE' },
-  { id: 'r32-2',  matchNum: 74,  home: 'Germany',      away: 'Paraguay',     date: 'Jun 29', time: '4:30 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-3',  matchNum: 75,  home: 'Netherlands',  away: 'Morocco',      date: 'Jun 29', time: '9:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-4',  matchNum: 76,  home: 'Portugal',     away: 'Croatia',      date: 'Jun 29', time: '1:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-5',  matchNum: 77,  home: 'France',       away: 'Sweden',       date: 'Jun 30', time: '5:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-6',  matchNum: 78,  home: 'Brazil',       away: 'Japan',        date: 'Jun 30', time: '1:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-7',  matchNum: 79,  home: 'Spain',        away: 'Austria',      date: 'Jun 30', time: '9:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-8',  matchNum: 80,  home: 'Argentina',    away: 'Cape Verde',   date: 'Jul 1',  time: '12:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-9',  matchNum: 81,  home: 'England',      away: 'DR Congo',     date: 'Jul 1',  time: '8:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-10', matchNum: 82,  home: 'USA',          away: 'Bosnia-Herz.', date: 'Jul 1',  time: '4:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-11', matchNum: 83,  home: 'Mexico',       away: 'Ecuador',      date: 'Jul 2',  time: '7:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-12', matchNum: 84,  home: 'Belgium',      away: 'Senegal',      date: 'Jul 2',  time: '3:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-13', matchNum: 85,  home: 'Colombia',     away: 'Ghana',        date: 'Jul 2',  time: '11:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-14', matchNum: 86,  home: 'Switzerland',  away: 'Algeria',      date: 'Jul 3',  time: '6:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-15', matchNum: 87,  home: 'Ivory Coast',  away: 'Norway',       date: 'Jul 3',  time: '9:30 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
-  { id: 'r32-16', matchNum: 88,  home: 'Australia',    away: 'Egypt',        date: 'Jul 3',  time: '2:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED' },
+  { id: 'r32-1',  matchNum: 73,  home: 'South Africa', away: 'Canada',       date: 'Jun 28', time: 'LIVE', homeScore: 0, awayScore: 0, status: 'LIVE', kickoffTimeUTC: '2026-06-28T19:00:00Z' },
+  { id: 'r32-2',  matchNum: 74,  home: 'Germany',      away: 'Paraguay',     date: 'Jun 29', time: '4:30 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-06-29T20:30:00Z' },
+  { id: 'r32-3',  matchNum: 75,  home: 'Netherlands',  away: 'Morocco',      date: 'Jun 29', time: '9:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-06-30T01:00:00Z' },
+  { id: 'r32-4',  matchNum: 76,  home: 'Portugal',     away: 'Croatia',      date: 'Jun 29', time: '1:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-06-29T17:00:00Z' },
+  { id: 'r32-5',  matchNum: 77,  home: 'France',       away: 'Sweden',       date: 'Jun 30', time: '5:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-06-30T21:00:00Z' },
+  { id: 'r32-6',  matchNum: 78,  home: 'Brazil',       away: 'Japan',        date: 'Jun 30', time: '1:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-06-30T17:00:00Z' },
+  { id: 'r32-7',  matchNum: 79,  home: 'Spain',        away: 'Austria',      date: 'Jun 30', time: '9:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-01T01:00:00Z' },
+  { id: 'r32-8',  matchNum: 80,  home: 'Argentina',    away: 'Cape Verde',   date: 'Jul 1',  time: '12:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-01T16:00:00Z' },
+  { id: 'r32-9',  matchNum: 81,  home: 'England',      away: 'DR Congo',     date: 'Jul 1',  time: '8:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-02T00:00:00Z' },
+  { id: 'r32-10', matchNum: 82,  home: 'USA',          away: 'Bosnia-Herz.', date: 'Jul 1',  time: '4:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-01T20:00:00Z' },
+  { id: 'r32-11', matchNum: 83,  home: 'Mexico',       away: 'Ecuador',      date: 'Jul 2',  time: '7:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-02T23:00:00Z' },
+  { id: 'r32-12', matchNum: 84,  home: 'Belgium',      away: 'Senegal',      date: 'Jul 2',  time: '3:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-02T19:00:00Z' },
+  { id: 'r32-13', matchNum: 85,  home: 'Colombia',     away: 'Ghana',        date: 'Jul 2',  time: '11:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-03T03:00:00Z' },
+  { id: 'r32-14', matchNum: 86,  home: 'Switzerland',  away: 'Algeria',      date: 'Jul 3',  time: '6:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-03T22:00:00Z' },
+  { id: 'r32-15', matchNum: 87,  home: 'Ivory Coast',  away: 'Norway',       date: 'Jul 3',  time: '9:30 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-04T01:30:00Z' },
+  { id: 'r32-16', matchNum: 88,  home: 'Australia',    away: 'Egypt',        date: 'Jul 3',  time: '2:00 PM', homeScore: null, awayScore: null, status: 'SCHEDULED', kickoffTimeUTC: '2026-07-03T18:00:00Z' },
 ];
 
 const LATER_ROUNDS = [
@@ -75,20 +75,45 @@ function FlagEmoji({ team }: { team: string }) {
   );
 }
 
+const SORTED_ROUND_OF_32: Match[] = [...ROUND_OF_32].sort((a, b) => {
+  const timeA = a.kickoffTimeUTC ? new Date(a.kickoffTimeUTC).getTime() : 0;
+  const timeB = b.kickoffTimeUTC ? new Date(b.kickoffTimeUTC).getTime() : 0;
+  return timeA - timeB;
+});
+
 export default function BracketPage() {
-  const [matches, setMatches] = useState<Match[]>(ROUND_OF_32);
+  const [matches, setMatches] = useState<Match[]>(SORTED_ROUND_OF_32);
   const [picks, setPicks] = useState<Record<string, 'HOME' | 'DRAW' | 'AWAY'>>({});
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [message, setMessage] = useState<Record<string, string>>({});
   const [dbMatchIds, setDbMatchIds] = useState<Record<number, string>>({}); // apiFootballId -> dbId
+  const [serverTimeOffset, setServerTimeOffset] = useState<number>(0);
+  const [tick, setTick] = useState<number>(0);
 
-  useEffect(() => {
-    // Load picks AND r32 matches in parallel, then cross-reference
-    Promise.all([
-      fetch('/api/picks').then(r => r.json()).catch(() => []),
-      fetch('/api/matches/r32-ids').then(r => r.json()).catch(() => ({ ids: {}, matches: [] })),
-    ]).then(([picksData, r32Data]) => {
+  const fetchData = async () => {
+    try {
+      const [picksRes, matchesRes] = await Promise.all([
+        fetch('/api/picks'),
+        fetch('/api/matches/r32-ids')
+      ]);
+
+      const dateHeader = matchesRes.headers.get('Date');
+      if (dateHeader) {
+        const serverTime = new Date(dateHeader).getTime();
+        const localTime = Date.now();
+        setServerTimeOffset(serverTime - localTime);
+      }
+
+      let picksData: any = [];
+      if (picksRes.status === 401) {
+        setIsLoggedIn(false);
+      } else {
+        picksData = await picksRes.json().catch(() => []);
+        setIsLoggedIn(true);
+      }
+
+      const r32Data = await matchesRes.json().catch(() => ({ ids: {}, matches: [] }));
       const idsData = r32Data?.ids || {};
       const dbMatches = r32Data?.matches || [];
 
@@ -112,8 +137,24 @@ export default function BracketPage() {
         return m;
       });
 
-      // Sort by date and time (kickoffTimeUTC) ascending
+      // Sort: finished/live first, then locked (past kickoff), then upcoming by date
       mergedMatches.sort((a, b) => {
+        const getPriority = (m: Match) => {
+          const isFinished = m.status === 'FINISHED' || (m.homeScore !== null && m.awayScore !== null);
+          const isLive = !isFinished && (m.status === 'LIVE' || m.status === 'IN_PLAY' || m.status === 'HALFTIME');
+          const kickoff = m.kickoffTimeUTC ? new Date(m.kickoffTimeUTC) : null;
+          // We use a reference "now" from the server offset available at fetchData time
+          const nowMs = Date.now();
+          const isPastKickoff = kickoff ? nowMs >= kickoff.getTime() : false;
+          if (isLive) return 0;
+          if (isFinished) return 1;
+          if (isPastKickoff) return 2;
+          return 3;
+        };
+        const pa = getPriority(a);
+        const pb = getPriority(b);
+        if (pa !== pb) return pa - pb;
+        // Within same group, sort by kickoff time ascending
         const timeA = a.kickoffTimeUTC ? new Date(a.kickoffTimeUTC).getTime() : 0;
         const timeB = b.kickoffTimeUTC ? new Date(b.kickoffTimeUTC).getTime() : 0;
         return timeA - timeB;
@@ -121,9 +162,7 @@ export default function BracketPage() {
 
       setMatches(mergedMatches);
 
-      if (Array.isArray(picksData) && picksData.length >= 0) {
-        setIsLoggedIn(true);
-
+      if (Array.isArray(picksData)) {
         // Build reverse map: dbUUID → matchNum
         const dbIdToMatchNum: Record<string, number> = {};
         Object.entries(idsData || {}).forEach(([matchNum, dbId]) => {
@@ -147,10 +186,31 @@ export default function BracketPage() {
         });
         setPicks(pickMap);
       }
-    });
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+
+    // Poll for matches and picks updates every 10 seconds
+    const pollInterval = setInterval(() => {
+      fetchData();
+    }, 10000);
+
+    return () => clearInterval(pollInterval);
   }, []);
 
+  // Update dynamic lock timer tick state every 1 second
+  useEffect(() => {
+    const timeInterval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000);
+    return () => clearInterval(timeInterval);
+  }, []);
 
+  const now = new Date(Date.now() + serverTimeOffset);
 
   const handlePick = async (matchNum: number, localId: string, prediction: 'HOME' | 'DRAW' | 'AWAY') => {
     if (!isLoggedIn) return;
@@ -182,40 +242,45 @@ export default function BracketPage() {
   const MatchCard = ({ match }: { match: Match }) => {
     const userPick = picks[match.id];
     const kickoff = match.kickoffTimeUTC ? new Date(match.kickoffTimeUTC) : null;
-    const now = new Date();
     
     // Status completion and live checks
     const isFinished = match.status === 'FINISHED' || (match.homeScore !== null && match.awayScore !== null);
     const isLive = !isFinished && (match.status === 'LIVE' || match.status === 'IN_PLAY' || match.status === 'HALFTIME');
-    const isLocked = (kickoff && now >= kickoff) || isFinished;
+    const isLocked = (kickoff && now >= kickoff) || isFinished || isLive;
 
     const dateStr = kickoff
-      ? kickoff.toLocaleDateString([], { month: 'short', day: 'numeric' })
+      ? kickoff.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
       : match.date;
     const timeStr = kickoff
-      ? kickoff.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      ? kickoff.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', timeZone: 'America/New_York' })
       : match.time;
 
+    // Determine card style
+    const cardBorder = isLive
+      ? 'border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.15)] bg-slate-900'
+      : isFinished
+      ? 'border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.08)] bg-slate-900/90'
+      : isLocked
+      ? 'border-rose-500/30 bg-slate-900/80'
+      : 'border-white/8 bg-slate-900/80 hover:border-indigo-500/30';
+
+    const headerBg = isLive
+      ? 'bg-emerald-500/20 text-emerald-400'
+      : isFinished
+      ? 'bg-rose-900/40 text-rose-300'
+      : isLocked
+      ? 'bg-rose-950/40 text-rose-400'
+      : 'bg-slate-800/60 text-slate-400';
+
     return (
-      <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${
-        isLive
-          ? 'border-emerald-500/60 shadow-[0_0_20px_rgba(16,185,129,0.15)] bg-slate-900'
-          : 'border-white/8 bg-slate-900/80 hover:border-indigo-500/30'
-      }`}>
+      <div className={`rounded-2xl border transition-all duration-300 overflow-hidden ${cardBorder}`}>
         {/* Header */}
-        <div className={`flex items-center justify-between px-4 py-2 text-[11px] font-bold uppercase tracking-widest ${
-          isLive 
-            ? 'bg-emerald-500/20 text-emerald-400' 
-            : isFinished 
-            ? 'bg-slate-800/60 text-slate-400' 
-            : isLocked 
-            ? 'bg-rose-950/30 text-rose-400' 
-            : 'bg-slate-800/60 text-slate-400'
-        }`}>
+        <div className={`flex items-center justify-between px-4 py-2 text-[11px] font-bold uppercase tracking-widest ${headerBg}`}>
           <span>Match #{match.matchNum}</span>
           <span className="flex items-center gap-1.5" suppressHydrationWarning>
             {isLive && <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />}
-            {isLive ? 'LIVE' : isFinished ? 'FT' : isLocked ? 'LOCKED' : `${dateStr} · ${timeStr}`}
+            {isFinished && <span className="w-2 h-2 rounded-full bg-rose-400" />}
+            {isLive ? 'LIVE' : isFinished ? '🔒 FINISHED' : isLocked ? '🔒 LOCKED' : `${dateStr} · ${timeStr}`}
           </span>
         </div>
 
@@ -344,10 +409,64 @@ export default function BracketPage() {
           <div className="flex-1 h-px bg-gradient-to-l from-indigo-500/50 to-transparent" />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {matches.map(match => (
-            <MatchCard key={match.id} match={match} />
-          ))}
+        <div className="space-y-6">
+          {/* Finished / Locked section */}
+          {matches.some(m => {
+            const isFinished = m.status === 'FINISHED' || (m.homeScore !== null && m.awayScore !== null);
+            const isLive = !isFinished && (m.status === 'LIVE' || m.status === 'IN_PLAY' || m.status === 'HALFTIME');
+            const kickoff = m.kickoffTimeUTC ? new Date(m.kickoffTimeUTC) : null;
+            return isFinished || isLive || (kickoff && now >= kickoff);
+          }) && (
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-1 h-px bg-rose-500/20" />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-rose-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block" />
+                  Locked &amp; Finished
+                </span>
+                <div className="flex-1 h-px bg-rose-500/20" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {matches.filter(m => {
+                  const isFinished = m.status === 'FINISHED' || (m.homeScore !== null && m.awayScore !== null);
+                  const isLive = !isFinished && (m.status === 'LIVE' || m.status === 'IN_PLAY' || m.status === 'HALFTIME');
+                  const kickoff = m.kickoffTimeUTC ? new Date(m.kickoffTimeUTC) : null;
+                  return isFinished || isLive || (kickoff && now >= kickoff);
+                }).map(match => (
+                  <MatchCard key={match.id} match={match} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Upcoming section */}
+          {matches.some(m => {
+            const isFinished = m.status === 'FINISHED' || (m.homeScore !== null && m.awayScore !== null);
+            const isLive = !isFinished && (m.status === 'LIVE' || m.status === 'IN_PLAY' || m.status === 'HALFTIME');
+            const kickoff = m.kickoffTimeUTC ? new Date(m.kickoffTimeUTC) : null;
+            return !isFinished && !isLive && !(kickoff && now >= kickoff);
+          }) && (
+            <div>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex-1 h-px bg-indigo-500/20" />
+                <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-400 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 inline-block" />
+                  Upcoming
+                </span>
+                <div className="flex-1 h-px bg-indigo-500/20" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {matches.filter(m => {
+                  const isFinished = m.status === 'FINISHED' || (m.homeScore !== null && m.awayScore !== null);
+                  const isLive = !isFinished && (m.status === 'LIVE' || m.status === 'IN_PLAY' || m.status === 'HALFTIME');
+                  const kickoff = m.kickoffTimeUTC ? new Date(m.kickoffTimeUTC) : null;
+                  return !isFinished && !isLive && !(kickoff && now >= kickoff);
+                }).map(match => (
+                  <MatchCard key={match.id} match={match} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
