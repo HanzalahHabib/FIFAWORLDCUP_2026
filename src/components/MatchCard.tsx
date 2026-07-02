@@ -40,7 +40,7 @@ export default function MatchCard({ match, userPick, isLoggedIn }: MatchProps) {
   const now = new Date();
   const kickoff = new Date(match.kickoffTimeUTC);
   const isFinished = match.status === 'FINISHED' || (match.homeScore !== null && match.awayScore !== null);
-  const isLocked = now >= kickoff || isFinished;
+  const isLocked = match.status !== 'SCHEDULED' || now >= kickoff || isFinished;
   const isLive = !isFinished && (match.status === 'IN_PLAY' || match.status === 'LIVE' || match.status === 'HALFTIME');
 
   const round = match.round ?? 'group-stage';
@@ -106,15 +106,22 @@ export default function MatchCard({ match, userPick, isLoggedIn }: MatchProps) {
       animate={{ opacity: 1, scale: 1 }}
       className="glass-panel p-5 rounded-2xl border border-white/10 space-y-4 relative"
     >
-      {/* Round badge */}
+      {/* Round badge + Match Number */}
       <div className="flex items-center justify-between">
-        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
-          isKnockout
-            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
-            : 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
-        }`}>
-          {ROUND_LABELS[round] || round}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${
+            isKnockout
+              ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+              : 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/20'
+          }`}>
+            {ROUND_LABELS[round] || round}
+          </span>
+          {match.apiFootballId && (
+            <span className="text-[10px] font-mono font-bold text-slate-500 bg-slate-800/60 border border-white/10 px-2 py-0.5 rounded-full">
+              #{match.apiFootballId}
+            </span>
+          )}
+        </div>
         {isFinished && (
           <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/20">
             COMPLETED

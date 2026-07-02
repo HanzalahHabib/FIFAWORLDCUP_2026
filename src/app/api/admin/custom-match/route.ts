@@ -52,20 +52,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { homeTeamId, awayTeamId, kickoffTimeUTC } = await request.json();
+    const { homeTeamId, awayTeamId, kickoffTimeUTC, round, matchNumber } = await request.json();
 
     if (!homeTeamId || !awayTeamId || !kickoffTimeUTC) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const match = await prisma.match.create({
-      data: {
-        homeTeamId,
-        awayTeamId,
-        kickoffTimeUTC: new Date(kickoffTimeUTC),
-        status: 'SCHEDULED'
+    // If a match number is provided, validate it is unique
+    if (matchNumber !== undefined && matchNumber !== null && matchNumber !== '') {
+      const existingByNumber = await prisma.match.findUnique({
+        where: { apiFootballId: Number(matchNumber) }
+      });
+      if (existingByNumber) {
+        return NextResponse.json({ error: `Match number ${matchNumber} is already taken.` }, { status: 400 });
       }
-    });
+    }
+
+    const createData: any = {
+      homeTeamId,
+      awayTeamId,
+      kickoffTimeUTC: new Date(kickoffTimeUTC),
+      status: 'SCHEDULED',
+      round: round || 'group-stage',
+    };
+
+    if (matchNumber !== undefined && matchNumber !== null && matchNumber !== '') {
+      createData.apiFootballId = Number(matchNumber);
+    }
+
+    const match = await (prisma.match.create as any)({ data: createData });
 
     return NextResponse.json({ message: 'Match created successfully', match });
   } catch (error) {

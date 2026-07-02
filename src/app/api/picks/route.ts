@@ -64,9 +64,10 @@ export async function POST(request: Request) {
     }
 
     // STRICT GUARDRAIL LOGIC: Time-Lock Validation
+    // Block if match is not SCHEDULED (admin locked it) OR kickoff time has passed
     const now = new Date();
-    if (now >= match.kickoffTimeUTC) {
-      return NextResponse.json({ error: 'Match has already kicked off. Picks are locked.' }, { status: 403 });
+    if (match.status !== 'SCHEDULED' || now >= match.kickoffTimeUTC) {
+      return NextResponse.json({ error: 'Match is locked. Picks are not allowed.' }, { status: 403 });
     }
 
     // 4. Upsert Pick (Allow changes until kickoff)

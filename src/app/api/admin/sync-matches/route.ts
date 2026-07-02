@@ -107,7 +107,6 @@ function findMatchingSofascoreEvent(dbMatch: any, sfEvents: any[]) {
 }
 
 async function fetchSofascoreEvents(path: 'last' | 'next'): Promise<any[]> {
-  const url = `https://api.sofascore.com/api/v1/unique-tournament/16/season/58210/events/${path}/0`;
   const directHeaders = {
     'authority': 'api.sofascore.com',
     'accept': '*/*',
@@ -125,43 +124,54 @@ async function fetchSofascoreEvents(path: 'last' | 'next'): Promise<any[]> {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
   };
 
-  try {
-    console.log(`Fetching Sofascore events (${path}) directly...`);
-    let sfRes = await fetch(url, { headers: directHeaders, cache: 'no-store' });
-    
-    if (!sfRes.ok) {
-      console.warn(`Direct Sofascore fetch (${path}) failed with status: ${sfRes.status}. Trying fallback proxy (corsproxy.io)...`);
-      const proxyHeaders = {
-        'accept': '*/*',
-        'accept-language': 'en-US,en;q=0.9',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      };
-      sfRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { headers: proxyHeaders, cache: 'no-store' });
-    }
+  const allEvents: any[] = [];
 
-    if (!sfRes.ok) {
-      console.warn(`Corsproxy fetch (${path}) failed with status: ${sfRes.status}. Trying fallback proxy (allorigins)...`);
-      const proxyHeaders = {
-        'accept': '*/*',
-        'accept-language': 'en-US,en;q=0.9',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      };
-      sfRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { headers: proxyHeaders, cache: 'no-store' });
-    }
-
-    if (sfRes.ok) {
-      const sfData = await sfRes.json();
-      if (sfData && Array.isArray(sfData.events)) {
-        console.log(`Successfully fetched ${sfData.events.length} events from Sofascore (${path})!`);
-        return sfData.events;
+  for (let page = 0; page < 10; page++) {
+    const url = `https://api.sofascore.com/api/v1/unique-tournament/16/season/58210/events/${path}/${page}`;
+    try {
+      console.log(`Fetching Sofascore events (${path}), page ${page} directly...`);
+      let sfRes = await fetch(url, { headers: directHeaders, cache: 'no-store' });
+      
+      if (!sfRes.ok) {
+        console.warn(`Direct Sofascore fetch (${path}), page ${page} failed with status: ${sfRes.status}. Trying fallback proxy (corsproxy.io)...`);
+        const proxyHeaders = {
+          'accept': '*/*',
+          'accept-language': 'en-US,en;q=0.9',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        };
+        sfRes = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { headers: proxyHeaders, cache: 'no-store' });
       }
-    } else {
-      console.error(`All Sofascore fetch attempts failed for (${path}). Status: ${sfRes.status}`);
+
+      if (!sfRes.ok) {
+        console.warn(`Corsproxy fetch (${path}), page ${page} failed with status: ${sfRes.status}. Trying fallback proxy (allorigins)...`);
+        const proxyHeaders = {
+          'accept': '*/*',
+          'accept-language': 'en-US,en;q=0.9',
+          'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        };
+        sfRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { headers: proxyHeaders, cache: 'no-store' });
+      }
+
+      if (sfRes.ok) {
+        const sfData = await sfRes.json();
+        if (sfData && Array.isArray(sfData.events) && sfData.events.length > 0) {
+          console.log(`Successfully fetched ${sfData.events.length} events from Sofascore (${path}), page ${page}!`);
+          allEvents.push(...sfData.events);
+        } else {
+          console.log(`No more events found for Sofascore (${path}), page ${page}. Stopping pagination.`);
+          break;
+        }
+      } else {
+        console.error(`All Sofascore fetch attempts failed for (${path}), page ${page}. Status: ${sfRes.status}`);
+        break;
+      }
+    } catch (err) {
+      console.error(`Exception during Sofascore fetch (${path}), page ${page}:`, err);
+      break;
     }
-  } catch (err) {
-    console.error(`Exception during Sofascore fetch (${path}):`, err);
   }
-  return [];
+
+  return allEvents;
 }
 
 export async function POST(request: Request) {

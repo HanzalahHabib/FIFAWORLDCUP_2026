@@ -3,6 +3,16 @@
 import { useState, useEffect } from 'react';
 import { Settings, Users, Plus, Trophy, Award, Target, MessageSquare, Trash2, Download } from 'lucide-react';
 
+const ROUND_LABELS: Record<string, string> = {
+  'group-stage':   'Group Stage',
+  'round-of-32':   'Round of 32',
+  'round-of-16':   'Round of 16',
+  'quarter-finals':'Quarter-final',
+  'semi-finals':   'Semi-final',
+  'third-place':   '3rd Place',
+  'final':         'Final',
+};
+
 export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   const [activeTab, setActiveTab] = useState<'settings' | 'users' | 'matches' | 'polls' | 'results'>('settings');
   
@@ -13,7 +23,7 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
   const [users, setUsers] = useState<any[]>([]);
 
   // Match State
-  const [matchData, setMatchData] = useState({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '' });
+  const [matchData, setMatchData] = useState({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '', round: 'group-stage', matchNumber: '' });
   const [customMatches, setCustomMatches] = useState<any[]>([]);
   const [automaticMatches, setAutomaticMatches] = useState<any[]>([]);
   const [selectedAutoIds, setSelectedAutoIds] = useState<Set<string>>(new Set());
@@ -135,7 +145,7 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
     });
     if (res.ok) {
       alert('Match Created!');
-      setMatchData({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '' });
+      setMatchData({ homeTeamId: '', awayTeamId: '', kickoffTimeUTC: '', round: 'group-stage', matchNumber: '' });
       fetchMatches();
     } else {
       const data = await res.json();
@@ -394,8 +404,39 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Kickoff Time (Local)</label>
-                <input type="datetime-local" required value={matchData.kickoffTimeUTC} onChange={e => setMatchData({...matchData, kickoffTimeUTC: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white" />
+                <label className="block text-sm text-slate-400 mb-1">Round / Section</label>
+                <select 
+                  required 
+                  value={matchData.round} 
+                  onChange={e => setMatchData({...matchData, round: e.target.value})} 
+                  className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white"
+                >
+                  <option value="group-stage">Group Stage</option>
+                  <option value="round-of-32">Round of 32</option>
+                  <option value="round-of-16">Round of 16</option>
+                  <option value="quarter-finals">Quarter-final</option>
+                  <option value="semi-finals">Semi-final</option>
+                  <option value="third-place">3rd Place</option>
+                  <option value="final">Final</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Kickoff Time (Local)</label>
+                  <input type="datetime-local" required value={matchData.kickoffTimeUTC} onChange={e => setMatchData({...matchData, kickoffTimeUTC: e.target.value})} className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white" />
+                </div>
+                <div>
+                  <label className="block text-sm text-slate-400 mb-1">Match Number (optional — for locking)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 105"
+                    value={matchData.matchNumber}
+                    onChange={e => setMatchData({...matchData, matchNumber: e.target.value})}
+                    className="w-full bg-slate-900 border border-white/10 rounded p-2 text-white placeholder-slate-600"
+                  />
+                  <p className="text-xs text-slate-600 mt-1">Used to lock/override the match from the Results tab.</p>
+                </div>
               </div>
               <button type="submit" className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded font-medium">Create Match</button>
             </form>
@@ -443,10 +484,13 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                     className="w-4 h-4 rounded border-white/20 bg-slate-900 accent-rose-500 flex-shrink-0"
                   />
                   <div className="flex-1 space-y-1">
-                    <div className="font-bold text-white flex items-center gap-2">
+                    <div className="font-bold text-white flex items-center gap-2 flex-wrap">
                       <span>{m.homeTeam?.name || m.homeTeamLabel || 'TBD'}</span>
                       <span className="text-xs text-slate-500 font-mono">vs</span>
                       <span>{m.awayTeam?.name || m.awayTeamLabel || 'TBD'}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                        {ROUND_LABELS[m.round] || m.round}
+                      </span>
                     </div>
                     <div className="text-xs text-slate-400 font-mono">
                       Kickoff: {new Date(m.kickoffTimeUTC).toLocaleString()}
@@ -508,10 +552,18 @@ export default function AdminAdvancedControls({ teams }: { teams: any[] }) {
                     className="w-4 h-4 rounded border-white/20 bg-slate-900 accent-rose-500 flex-shrink-0"
                   />
                   <div className="flex-1 space-y-1">
-                    <div className="font-bold text-white flex items-center gap-2">
+                    <div className="font-bold text-white flex items-center gap-2 flex-wrap">
+                      {m.apiFootballId && (
+                        <span className="text-[10px] font-bold font-mono bg-slate-700/80 text-slate-300 border border-white/10 px-2 py-0.5 rounded-full">
+                          #{m.apiFootballId}
+                        </span>
+                      )}
                       <span>{m.homeTeam?.name || m.homeTeamLabel || 'TBD'}</span>
                       <span className="text-xs text-slate-500 font-mono">vs</span>
                       <span>{m.awayTeam?.name || m.awayTeamLabel || 'TBD'}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                        {ROUND_LABELS[m.round] || m.round}
+                      </span>
                     </div>
                     <div className="text-xs text-slate-400 font-mono">
                       Kickoff: {new Date(m.kickoffTimeUTC).toLocaleString()}

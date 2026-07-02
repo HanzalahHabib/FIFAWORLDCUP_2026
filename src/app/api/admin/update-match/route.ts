@@ -62,8 +62,13 @@ export async function POST(request: Request) {
     }
 
     const updateData: any = { status };
-    if (homeScore !== undefined && homeScore !== '') updateData.homeScore = Number(homeScore);
-    if (awayScore !== undefined && awayScore !== '') updateData.awayScore = Number(awayScore);
+    if (status === 'SCHEDULED') {
+      updateData.homeScore = null;
+      updateData.awayScore = null;
+    } else {
+      if (homeScore !== undefined && homeScore !== '') updateData.homeScore = Number(homeScore);
+      if (awayScore !== undefined && awayScore !== '') updateData.awayScore = Number(awayScore);
+    }
     if (kickoffTimeUTC) updateData.kickoffTimeUTC = new Date(kickoffTimeUTC);
 
     const updated = await (prisma.match.update as any)({

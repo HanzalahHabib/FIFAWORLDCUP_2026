@@ -246,7 +246,7 @@ export default function BracketPage() {
     // Status completion and live checks
     const isFinished = match.status === 'FINISHED' || (match.homeScore !== null && match.awayScore !== null);
     const isLive = !isFinished && (match.status === 'LIVE' || match.status === 'IN_PLAY' || match.status === 'HALFTIME');
-    const isLocked = (kickoff && now >= kickoff) || isFinished || isLive;
+    const isLocked = match.status !== 'SCHEDULED' || (kickoff !== null && now >= kickoff) || isFinished || isLive;
 
     const dateStr = kickoff
       ? kickoff.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })
